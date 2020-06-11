@@ -8,8 +8,10 @@ jobs:
       - checkout
       - setup_remote_docker
       - heroku/install
-      - run: heroku container:login
-      - run: cd build && heroku container:push -a bridge-server-go --context-path ../ web
+      - run: docker login --username=_ --password=$(heroku auth:token) registry.heroku.com
+      - run: docker build -t registry.heroku.com/${HEROKU_APP_NAME}/web -f build/Dockerfile .
+      - run: docker push registry.heroku.com/${HEROKU_APP_NAME}/web 
+      - run: heroku container:release web -a ${HEROKU_APP_NAME}
 orbs:
   heroku: circleci/heroku@1.0.1
 version: 2.1
