@@ -1,4 +1,4 @@
-FROM golang:1.14.2 as builder
+FROM golang:1.14.4-alpine3.12 as builder
 
 WORKDIR /go/src/github.com/mrbttf/bridge-server 
 
