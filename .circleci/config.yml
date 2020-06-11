@@ -1,7 +1,19 @@
-version: 2.1
+# Golang CircleCI 2.0 configuration file
+#
+# Check https://circleci.com/docs/2.0/language-go/ for more details
+jobs:
+  deploy:
+    executor: heroku/default
+    steps:
+      - checkout
+      - setup_remote_docker
+      - heroku/install
+      - run: heroku container:login
+      - run: cd build && heroku container:push -a bridge-server-go --context-path ../ web
 orbs:
-  heroku: circleci/heroku@0.0.10
+  heroku: circleci/heroku@1.0.1
+version: 2.1
 workflows:
   heroku_deploy:
     jobs:
-      - heroku/deploy-via-git
+      - deploy

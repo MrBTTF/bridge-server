@@ -1,13 +1,15 @@
 FROM golang:1.14.2
 
-WORKDIR /app
+WORKDIR /go/src/github.com/mrbttf/bridge-server 
 
 COPY go.mod go.sum ./
+
 RUN go mod download
 
-COPY . .
-RUN go build -o main ./cmd 
+COPY . ./
 
-EXPOSE 80
+RUN go install -v /go/src/github.com/mrbttf/bridge-server/cmd        
 
-CMD [ "./main" ]
+EXPOSE 8080
+
+CMD [ "/go/bin/cmd" ]
