@@ -7,10 +7,8 @@ jobs:
       - image: circleci/golang:latest
     steps:
       - checkout
-      - run: mkdir /tmp/test-results
-      - run: go test -v ./... > /tmp/test-results/output.txt
-      - store_test_results:
-          path: /tmp/test-results
+      - run: go test -v ./... 
+      
   deploy:
     executor: heroku/default
     steps:
