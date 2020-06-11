@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 
@@ -8,9 +9,10 @@ import (
 )
 
 func main() {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "80"
+	port, ok := os.LookupEnv("PORT")
+	if !ok {
+		port = "8080"
+		fmt.Println("using default port 8080")
 	}
 	log.Fatal(server.Start(port))
 }
