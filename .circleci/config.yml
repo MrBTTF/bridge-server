@@ -2,6 +2,12 @@
 #
 # Check https://circleci.com/docs/2.0/language-go/ for more details
 jobs:
+  tests:
+    docker:
+      - image: circleci/golang:latest
+    steps:
+      - checkout
+      - run: go test -v ./...
   deploy:
     executor: heroku/default
     steps:
@@ -16,6 +22,9 @@ orbs:
   heroku: circleci/heroku@1.0.1
 version: 2.1
 workflows:
-  heroku_deploy:
+  test_and_deploy:
     jobs:
-      - deploy
+      - tests
+      - deploy:
+          requires:
+            - tests
