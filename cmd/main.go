@@ -2,10 +2,15 @@ package main
 
 import (
 	"log"
+	"os"
 
 	"github.com/mrbttf/bridge-server/pkg/server"
 )
 
 func main() {
-	log.Fatal(server.Start("80"))
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "80"
+	}
+	log.Fatal(server.Start(port))
 }
