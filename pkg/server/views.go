@@ -146,12 +146,58 @@ func (a *app) sessionStart(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (a *app) sessionEndTurn(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var req struct {
+		SessionID string
+		Player    string
+	}
+	err := decoder.Decode(&req)
+	if err != nil {
+		errorResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if len(req.SessionID) == 0 {
+		errorResponse(w, http.StatusBadRequest, "invalid sessionId")
+		return
+	}
+
+	session, err := a.db.GetSession(req.SessionID)
+	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	session, err = game.EndTurn(session, req.Player) 
+	if err != nil {
+		errorResponse(w, http.StatusNotAcceptable, err.Error())
+		return
+	}
+
+	err = a.db.SaveSession(session)
+	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	result := map[string]interface{}{
+		"result":  "ok",
+	}
+	err = renderJson(result, w)
+
+	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+}
+
 func (a *app) cardLay(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	var req struct {
 		SessionID string
 		Player    string
 		Card      string
+		SuitOrdered      string
 	}
 	err := decoder.Decode(&req)
 	if err != nil {
@@ -173,19 +219,19 @@ func (a *app) cardLay(w http.ResponseWriter, r *http.Request) {
 
 	session, err := a.db.GetSession(req.SessionID)
 	if err != nil {
-		errorResponse(w, http.StatusBadRequest, err.Error())
+		errorResponse(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	session, err = game.LayCard(session, req.Player, req.Card)
+	session, err = game.LayCard(session, req.Player, req.Card, req.SuitOrdered)
 	if err != nil {
-		errorResponse(w, http.StatusBadRequest, err.Error())
+		errorResponse(w, http.StatusNotAcceptable, err.Error())
 		return
 	}
 
 	err = a.db.SaveSession(session)
 	if err != nil {
-		errorResponse(w, http.StatusBadRequest, err.Error())
+		errorResponse(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -194,7 +240,158 @@ func (a *app) cardLay(w http.ResponseWriter, r *http.Request) {
 	}, w)
 
 	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+}
+
+func (a *app) cardUnlay(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var req struct {
+		SessionID string
+		Player    string
+	}
+	err := decoder.Decode(&req)
+	if err != nil {
 		errorResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if len(req.SessionID) == 0 {
+		errorResponse(w, http.StatusBadRequest, "invalid sessionId")
+		return
+	}
+	if len(req.Player) == 0 {
+		errorResponse(w, http.StatusBadRequest, "invalid player")
+		return
+	}
+
+	session, err := a.db.GetSession(req.SessionID)
+	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	session, err = game.UnlayCard(session, req.Player)
+	if err != nil {
+		errorResponse(w, http.StatusNotAcceptable, err.Error())
+		return
+	}
+
+	err = a.db.SaveSession(session)
+	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	err = renderJson(map[string]string{
+		"result": "ok",
+	}, w)
+
+	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+}
+
+
+
+func (a *app) cardOrderSuit(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var req struct {
+		SessionID string
+		Player    string
+		Rank      string
+	}
+	err := decoder.Decode(&req)
+	if err != nil {
+		errorResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if len(req.SessionID) == 0 {
+		errorResponse(w, http.StatusBadRequest, "invalid sessionId")
+		return
+	}
+	if len(req.Player) == 0 {
+		errorResponse(w, http.StatusBadRequest, "invalid player")
+		return
+	}
+	if len(req.Rank) == 0 {
+		errorResponse(w, http.StatusBadRequest, "invalid rank")
+		return
+	}
+
+	session, err := a.db.GetSession(req.SessionID)
+	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	session, err = game.OrderSuit(session, req.Player, req.Rank)
+	if err != nil {
+		errorResponse(w, http.StatusNotAcceptable, err.Error())
+		return
+	}
+
+	err = a.db.SaveSession(session)
+	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	err = renderJson(map[string]string{
+		"result": "ok",
+	}, w)
+
+	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+}
+
+func (a *app) deckPull(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var req struct {
+		SessionID string
+		Player    string
+	}
+	err := decoder.Decode(&req)
+	if err != nil {
+		errorResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if len(req.SessionID) == 0 {
+		errorResponse(w, http.StatusBadRequest, "invalid sessionId")
+		return
+	}
+	if len(req.Player) == 0 {
+		errorResponse(w, http.StatusBadRequest, "invalid player")
+		return
+	}
+
+	session, err := a.db.GetSession(req.SessionID)
+	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	session, err = game.PullDeck(session, req.Player)
+	if err != nil {
+		errorResponse(w, http.StatusNotAcceptable, err.Error())
+		return
+	}
+
+	err = a.db.SaveSession(session)
+	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	err = renderJson(map[string]string{
+		"result": "ok",
+	}, w)
+
+	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 }
@@ -216,9 +413,14 @@ func Start(port string) error {
 	session.HandleFunc("/create", app.sessionCreate).Methods("POST")
 	session.HandleFunc("/join", app.sessionJoin).Methods("POST")
 	session.HandleFunc("/start", app.sessionStart).Methods("POST")
+	session.HandleFunc("/endTurn", app.sessionEndTurn).Methods("POST")
 
 	card := r.PathPrefix("/card").Subrouter()
 	card.HandleFunc("/lay", app.cardLay).Methods("POST")
+	card.HandleFunc("/unlay", app.cardUnlay).Methods("POST")
+
+	deck := r.PathPrefix("/deck").Subrouter()
+	deck.HandleFunc("/pull", app.deckPull).Methods("POST")
 
 	fmt.Printf("server started at port :%s\n", port)
 	return http.ListenAndServe(":"+port, r)

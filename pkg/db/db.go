@@ -47,18 +47,23 @@ func (db *DB) CreateSession(sessionName, hostPlayer string) (string, error) {
 
 func (db *DB) JoinSession(sessionID, playerName string) error {
 	session, err := db.GetSession(sessionID)
-	session.Players[playerName] = nil
+	session.Players[playerName] = &game.Player{
+		Name: playerName,
+	}
+	session.PlayersOrders = append(session.PlayersOrders, playerName)
 	err = db.SaveSession(session)
 	return err
 }
 
 func (db *DB) SaveSession(session *game.Session) error {
+	fmt.Println("New Session:")
+	fmt.Println(session)
 	return db.bolt.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(sessionBucket))
 
 		encoded, err := json.Marshal(session)
-		fmt.Println()
-		fmt.Println(string(encoded))
+		// fmt.Println()
+		// fmt.Println(string(encoded))
 		if err != nil {
 			return err
 		}
