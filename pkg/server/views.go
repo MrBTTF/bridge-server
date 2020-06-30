@@ -294,60 +294,6 @@ func (a *app) cardUnlay(w http.ResponseWriter, r *http.Request) {
 }
 
 
-
-func (a *app) cardOrderSuit(w http.ResponseWriter, r *http.Request) {
-	decoder := json.NewDecoder(r.Body)
-	var req struct {
-		SessionID string
-		Player    string
-		Rank      string
-	}
-	err := decoder.Decode(&req)
-	if err != nil {
-		errorResponse(w, http.StatusBadRequest, err.Error())
-		return
-	}
-	if len(req.SessionID) == 0 {
-		errorResponse(w, http.StatusBadRequest, "invalid sessionId")
-		return
-	}
-	if len(req.Player) == 0 {
-		errorResponse(w, http.StatusBadRequest, "invalid player")
-		return
-	}
-	if len(req.Rank) == 0 {
-		errorResponse(w, http.StatusBadRequest, "invalid rank")
-		return
-	}
-
-	session, err := a.db.GetSession(req.SessionID)
-	if err != nil {
-		errorResponse(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	session, err = game.OrderSuit(session, req.Player, req.Rank)
-	if err != nil {
-		errorResponse(w, http.StatusNotAcceptable, err.Error())
-		return
-	}
-
-	err = a.db.SaveSession(session)
-	if err != nil {
-		errorResponse(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	err = renderJson(map[string]string{
-		"result": "ok",
-	}, w)
-
-	if err != nil {
-		errorResponse(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-}
-
 func (a *app) deckPull(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	var req struct {

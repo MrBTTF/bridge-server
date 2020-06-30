@@ -48,27 +48,31 @@ func InitSession(session *Session) *Session {
 			continue
 		}
 		players[player].Hand, _deck = _deck[len(_deck)-playerHandSize:], _deck[:len(_deck)-playerHandSize]
-		players[player].Laid = []deck.Card{}
 		players[player].State = NextTurn
 
 	}
-	newSession.Deck, newSession.Laid = _deck[:len(_deck)-1], _deck[len(_deck)-1:]
-	players[session.HostPlayer], _ = players[session.HostPlayer].Lay(newSession.Laid[0])
-	if players[session.HostPlayer].State == Normal {
-		players[session.HostPlayer].State = Start
-	}
+
 	newSession.Players = players
+
+	_deck = append(_deck, deck.Card{deck.Heart, deck.Seven})
+
+	newSession.Deck, newSession.Laid = _deck[:len(_deck)-1], _deck[len(_deck)-1:]
+	hostPlayer := newSession.Players[newSession.HostPlayer]
+	hostPlayer, _ = hostPlayer.Lay(newSession.Laid[0])
+	nextPlayerPullIfMust(newSession, hostPlayer)
+
+	if hostPlayer.State == Normal {
+		hostPlayer.State = Start
+	}
+
+	newSession.Players[session.HostPlayer] = hostPlayer
 	return newSession
 }
 
 func createDeck() []deck.Card {
-	return deck.New(func(cards []deck.Card) []deck.Card {
-		result := []deck.Card{}
-		for _, card := range bridgeDeck {
-			result = append(result, card)
-		}
-		return result
-	}, deck.Shuffle)
+	return deck.New(deck.Filter(func(card deck.Card) bool {
+		return card.Rank < deck.Six && card.Rank != deck.Ace
+	}), deck.Shuffle)
 }
 
 func mustBeCovered(card deck.Card) bool {
@@ -85,8 +89,26 @@ func EndTurn(session *Session, playerName string) (*Session, error) {
 		return nil, fmt.Errorf("Player %s can't end turn: %s", playerName, err)
 	}
 
+	nextPlayerPullIfMust(newSession, player)
+
+	newSession.Laid = append(newSession.Laid, player.Laid...)
+	player.Laid = []deck.Card{}
+	newSession.Players[playerName] = player
+
+	nextPlayer := newSession.NextPlayer()
+	nextPlayer.State = Start
+
+	newSession.PlayersOrders = append(newSession.PlayersOrders[1:], newSession.PlayersOrders[0])
+	return newSession, nil
+}
+
+func nextPlayerPullIfMust(newSession *Session, currentPlayer *Player) {
 	pulledByNextPlayer := 0
-	for _, card := range player.Laid {
+	laid := currentPlayer.Laid
+	if len(laid) == 0 {
+		laid = newSession.Laid
+	}
+	for _, card := range laid {
 		if card.Rank == deck.Seven {
 			pulledByNextPlayer++
 		}
@@ -94,17 +116,7 @@ func EndTurn(session *Session, playerName string) (*Session, error) {
 			pulledByNextPlayer += 2
 		}
 	}
-
-	newSession.PlayersOrders = append(newSession.PlayersOrders[1:], newSession.PlayersOrders[0])
-	nextPlayer := newSession.NextPlayer()
-	pullDeck(newSession, nextPlayer, pulledByNextPlayer)
-
-	newSession.Laid = append(newSession.Laid, player.Laid...)
-	player.Laid = []deck.Card{}
-	newSession.Players[playerName] = player
-
-	// TODO: init next player
-	return newSession, nil
+	pullDeck(newSession, newSession.NextPlayer(), pulledByNextPlayer)
 }
 
 func LayCard(session *Session, playerName, cardStr, suit string) (*Session, error) {
@@ -132,12 +144,14 @@ func LayCard(session *Session, playerName, cardStr, suit string) (*Session, erro
 
 	if len(player.Laid) > 0 {
 		topCard = player.Laid[len(player.Laid)-1]
+		if topCard.Rank != deck.Six && topCard.Rank != deck.Eight && topCard.Rank != deck.Ace && card.Rank != topCard.Rank {
+			return nil, fmt.Errorf("Player %s can't lay %s on %s", playerName, card, topCard)
+		}
 	}
-
 
 	if player.SuitOrdered != nil && card.Suit != *player.SuitOrdered {
 		return nil, fmt.Errorf("Player %s must lay suit %s, not %s", playerName, card.Suit, player.SuitOrdered)
-	} else if card.Rank != deck.Jack && (card.Rank != topCard.Rank && card.Suit != topCard.Suit) {
+	} else if card.Rank != deck.Jack && topCard.Rank != deck.Jack && (card.Rank != topCard.Rank && card.Suit != topCard.Suit) {
 		return nil, fmt.Errorf("Player %s can't lay %s on %s", playerName, card, topCard)
 	}
 
@@ -146,7 +160,7 @@ func LayCard(session *Session, playerName, cardStr, suit string) (*Session, erro
 		if err != nil {
 			return nil, fmt.Errorf("Player %s can't lay: %s", playerName, err)
 		}
-	}	
+	}
 
 	player, err := player.Lay(card)
 	if err != nil {
@@ -211,7 +225,7 @@ func PullDeck(session *Session, playerName string) (*Session, error) {
 		return nil, fmt.Errorf("Player %s can't pull: %s", playerName, err)
 	}
 
-	pullDeck(session, player, 1)
+	pullDeck(newSession, player, 1)
 
 	newSession.Players[playerName] = player
 	return newSession, nil

@@ -38,7 +38,7 @@ func New(name string, hostPlayer string) *Session {
 }
 
 func (s Session) NextPlayer() *Player {
-	return &newSession.Players[newSession.PlayersOrders[0]]
+	return s.Players[s.PlayersOrders[1]]
 }
 
 func (s Session) String() string {
@@ -149,11 +149,11 @@ func (s State) end() (State, error) {
 }
 
 type Player struct {
-	Name  string      `json:name`
-	Hand  []deck.Card `json:hand`
-	Laid  []deck.Card `json:laid`
-	SuitOrdered *deck.Suit `json:suitOrdered`
-	State `json:state`
+	Name        string      `json:name`
+	Hand        []deck.Card `json:hand`
+	Laid        []deck.Card `json:laid`
+	SuitOrdered *deck.Suit  `json:suitOrdered`
+	State       `json:state`
 }
 
 func (p Player) Copy() *Player {
