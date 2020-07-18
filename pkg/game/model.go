@@ -1,6 +1,7 @@
 package game
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -13,14 +14,27 @@ const (
 	playerHandSize = 5
 )
 
+type Card deck.Card
+
+func (c Card) MarshalJSON() ([]byte, error) {
+	return []byte(`"` + cardToStr[c] + `"`), nil
+}
+
+func (c *Card) UnmarshalJSON(data []byte) error {
+	var s string
+	err := json.Unmarshal(data, &s)
+	*c = strToCard[s]
+	return err
+}
+
 type Session struct {
 	ID            string             `json:id`
 	Name          string             `json:name`
 	HostPlayer    string             `json:hostPlayers`
 	Players       map[string]*Player `json:players`
 	PlayersOrders []string           `json:playersOrders`
-	Laid          []deck.Card        `json:laid`
-	Deck          []deck.Card        `json:deck`
+	Laid          []Card             `json:laid`
+	Deck          []Card             `json:deck`
 }
 
 func New(name string, hostPlayer string) *Session {
@@ -29,9 +43,7 @@ func New(name string, hostPlayer string) *Session {
 		Name:       name,
 		HostPlayer: hostPlayer,
 		Players: map[string]*Player{
-			hostPlayer: {
-				Name: hostPlayer,
-			},
+			hostPlayer: NewPlayer(hostPlayer),
 		},
 		PlayersOrders: []string{hostPlayer},
 	}
@@ -66,10 +78,10 @@ func (s Session) String() string {
 }
 
 func (s Session) Copy() *Session {
-	newDeck := make([]deck.Card, len(s.Deck))
+	newDeck := make([]Card, len(s.Deck))
 	copy(newDeck, s.Deck)
 
-	laid := make([]deck.Card, len(s.Laid))
+	laid := make([]Card, len(s.Laid))
 	copy(laid, s.Laid)
 
 	playersOrders := make([]string, len(s.PlayersOrders))
@@ -113,7 +125,7 @@ func (er InvalidActionError) Error() string {
 	return fmt.Sprintf("Invalid action \"%s\" for state %s", er.action, er.state)
 }
 
-func (s State) lay(card deck.Card) (State, error) {
+func (s State) lay(card Card) (State, error) {
 	if s != NextTurn {
 		switch card.Rank {
 		case deck.Ace:
@@ -149,18 +161,24 @@ func (s State) end() (State, error) {
 }
 
 type Player struct {
-	Name        string      `json:name`
-	Hand        []deck.Card `json:hand`
-	Laid        []deck.Card `json:laid`
-	SuitOrdered *deck.Suit  `json:suitOrdered`
+	Name        string     `json:name`
+	Hand        []Card     `json:hand`
+	Laid        []Card     `json:laid`
+	SuitOrdered *deck.Suit `json:suitOrdered`
 	State       `json:state`
 }
 
+func NewPlayer(name string) *Player {
+	return &Player{
+		Name: name,
+	}
+}
+
 func (p Player) Copy() *Player {
-	hand := make([]deck.Card, len(p.Hand))
+	hand := make([]Card, len(p.Hand))
 	copy(hand, p.Hand)
 
-	laid := make([]deck.Card, len(p.Laid))
+	laid := make([]Card, len(p.Laid))
 	copy(laid, p.Laid)
 
 	return &Player{
@@ -171,7 +189,7 @@ func (p Player) Copy() *Player {
 	}
 }
 
-func (p Player) Lay(card deck.Card) (*Player, error) {
+func (p Player) Lay(card Card) (*Player, error) {
 	player := p.Copy()
 	State, err := player.State.lay(card)
 	if err != nil {

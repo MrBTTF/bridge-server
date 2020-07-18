@@ -7,12 +7,14 @@ import (
 )
 
 var (
-	bridgeDeck []deck.Card
-	strToCard  map[string]deck.Card
+	bridgeDeck   []Card
+	strToCard    map[string]Card
+	cardToStr    map[Card]string
+	playersTurns map[string]map[string]chan struct{}
 )
 
 func init() {
-	bridgeDeck = deck.New(func(cards []deck.Card) []deck.Card {
+	_deck := deck.New(func(cards []deck.Card) []deck.Card {
 		result := []deck.Card{}
 		for _, card := range cards {
 			if card.Rank >= deck.Six || card.Rank == deck.Ace {
@@ -21,18 +23,32 @@ func init() {
 		}
 		return result
 	})
+	bridgeDeck = fromDeckCard(_deck)
+
 	ranks := []string{"A", "6", "7", "8", "9", "T", "J", "Q", "K"}
 	suits := []string{"S", "D", "C", "H"}
-	strToCard = make(map[string]deck.Card)
+	strToCard = make(map[string]Card)
+	cardToStr = make(map[Card]string)
 
 	for i, suit := range suits {
 		for j, rank := range ranks {
 			strToCard[suit+rank] = bridgeDeck[i*(len(ranks))+j]
+			cardToStr[strToCard[suit+rank]] = suit + rank
 		}
 	}
+
+	playersTurns = make(map[string]map[string]chan struct{})
 }
 
-func InitSession(session *Session) *Session {
+func fromDeckCard(deck []deck.Card) []Card {
+	var result []Card
+	for _, card := range deck {
+		result = append(result, (Card)(card))
+	}
+	return result
+}
+
+func InitSession(session *Session) (*Session, error) {
 	newSession := session.Copy()
 
 	_deck := createDeck()
@@ -40,8 +56,12 @@ func InitSession(session *Session) *Session {
 	players := newSession.Players
 	fmt.Println("InitSession")
 	fmt.Println(players)
+	if len(players) < 2 {
+		return nil, fmt.Errorf("Players must be more than 2")
+	}
+	playersTurns[newSession.ID] = make(map[string]chan struct{})
 	for player := range newSession.Players {
-		players[player].Laid = []deck.Card{}
+		players[player].Laid = []Card{}
 		if player == session.HostPlayer {
 			players[player].Hand, _deck = _deck[len(_deck)-hostHandSize:], _deck[:len(_deck)-hostHandSize]
 			players[player].State = Start
@@ -50,11 +70,12 @@ func InitSession(session *Session) *Session {
 		players[player].Hand, _deck = _deck[len(_deck)-playerHandSize:], _deck[:len(_deck)-playerHandSize]
 		players[player].State = NextTurn
 
+		playersTurns[newSession.ID][players[player].Name] = make(chan struct{})
 	}
 
 	newSession.Players = players
 
-	_deck = append(_deck, deck.Card{deck.Heart, deck.Seven})
+	// _deck = append(_deck, Card{deck.Heart, deck.Seven})
 
 	newSession.Deck, newSession.Laid = _deck[:len(_deck)-1], _deck[len(_deck)-1:]
 	hostPlayer := newSession.Players[newSession.HostPlayer]
@@ -66,16 +87,17 @@ func InitSession(session *Session) *Session {
 	}
 
 	newSession.Players[session.HostPlayer] = hostPlayer
-	return newSession
+	return newSession, nil
 }
 
-func createDeck() []deck.Card {
-	return deck.New(deck.Filter(func(card deck.Card) bool {
+func createDeck() []Card {
+	_deck := deck.New(deck.Filter(func(card deck.Card) bool {
 		return card.Rank < deck.Six && card.Rank != deck.Ace
 	}), deck.Shuffle)
+	return fromDeckCard(_deck)
 }
 
-func mustBeCovered(card deck.Card) bool {
+func mustBeCovered(card Card) bool {
 	return card.Rank == deck.Six || card.Rank == deck.Ace
 }
 
@@ -89,16 +111,30 @@ func EndTurn(session *Session, playerName string) (*Session, error) {
 		return nil, fmt.Errorf("Player %s can't end turn: %s", playerName, err)
 	}
 
+	nextPlayer := newSession.NextPlayer()
+	playersTurns[newSession.ID][nextPlayer.Name] <- struct{}{}
+
+	return newSession, nil
+}
+
+func WaitForTurn(session *Session, playerName string) (*Session, error) {
+	newSession := session.Copy()
+
+	player := newSession.Players[playerName]
+
 	nextPlayerPullIfMust(newSession, player)
 
 	newSession.Laid = append(newSession.Laid, player.Laid...)
-	player.Laid = []deck.Card{}
+	player.Laid = []Card{}
 	newSession.Players[playerName] = player
 
 	nextPlayer := newSession.NextPlayer()
 	nextPlayer.State = Start
 
 	newSession.PlayersOrders = append(newSession.PlayersOrders[1:], newSession.PlayersOrders[0])
+
+	<-playersTurns[newSession.ID][player.Name]
+
 	return newSession, nil
 }
 

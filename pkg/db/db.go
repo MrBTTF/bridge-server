@@ -47,9 +47,7 @@ func (db *DB) CreateSession(sessionName, hostPlayer string) (string, error) {
 
 func (db *DB) JoinSession(sessionID, playerName string) error {
 	session, err := db.GetSession(sessionID)
-	session.Players[playerName] = &game.Player{
-		Name: playerName,
-	}
+	session.Players[playerName] = game.NewPlayer(playerName)
 	session.PlayersOrders = append(session.PlayersOrders, playerName)
 	err = db.SaveSession(session)
 	return err
@@ -82,6 +80,21 @@ func (db *DB) GetSession(sessionID string) (*game.Session, error) {
 		return json.Unmarshal(v, &session)
 	})
 	return session, err
+}
+
+func (db *DB) ListSessions() ([]*game.Session, error) {
+	var sessions []*game.Session
+	err := db.bolt.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(sessionBucket))
+		err := b.ForEach(func(k, v []byte) error {
+			var session *game.Session
+			err := json.Unmarshal(v, &session)
+			sessions = append(sessions, session)
+			return err
+		})
+		return err
+	})
+	return sessions, err
 }
 
 func (db DB) Close() error {
