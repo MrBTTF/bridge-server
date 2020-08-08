@@ -43,11 +43,11 @@ func (a *app) sessionCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(req.SessionName) == 0 {
-		errorResponse(w, http.StatusBadRequest, "invalid sessionName")
+		errorResponse(w, http.StatusBadRequest, "invalid field: sessionName")
 		return
 	}
 	if len(req.HostPlayer) == 0 {
-		errorResponse(w, http.StatusBadRequest, "invalid hostId")
+		errorResponse(w, http.StatusBadRequest, "invalid field: hostId")
 		return
 	}
 
@@ -81,16 +81,23 @@ func (a *app) sessionJoin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(req.SessionID) == 0 {
-		errorResponse(w, http.StatusBadRequest, "invalid sessionId")
+		errorResponse(w, http.StatusBadRequest, "invalid field: sessionId")
 		return
 	}
 	if len(req.PlayerName) == 0 {
-		errorResponse(w, http.StatusBadRequest, "invalid playerName")
+		errorResponse(w, http.StatusBadRequest, "invalid field: playerName")
 		return
 	}
 
-	err = a.db.JoinSession(req.SessionID, req.PlayerName)
+	session, err := a.db.GetSession(req.SessionID)
+	if err != nil {
+		errorResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
 
+	session = game.JoinSession(session, req.PlayerName)
+
+	err = a.db.SaveSession(session)
 	if err != nil {
 		errorResponse(w, http.StatusBadRequest, err.Error())
 		return
@@ -117,7 +124,7 @@ func (a *app) sessionStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(req.SessionID) == 0 {
-		errorResponse(w, http.StatusBadRequest, "invalid sessionId")
+		errorResponse(w, http.StatusBadRequest, "invalid field: sessionId")
 		return
 	}
 
@@ -127,6 +134,7 @@ func (a *app) sessionStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	fmt.Println("InitSession")
 	session, err = game.InitSession(session)
 	if err != nil {
 		errorResponse(w, http.StatusInternalServerError, err.Error())
@@ -153,8 +161,8 @@ func (a *app) sessionStart(w http.ResponseWriter, r *http.Request) {
 func (a *app) sessionEndTurn(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	var req struct {
-		SessionID string
-		Player    string
+		SessionID  string
+		PlayerName string
 	}
 	err := decoder.Decode(&req)
 	if err != nil {
@@ -162,7 +170,11 @@ func (a *app) sessionEndTurn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(req.SessionID) == 0 {
-		errorResponse(w, http.StatusBadRequest, "invalid sessionId")
+		errorResponse(w, http.StatusBadRequest, "invalid field: sessionId")
+		return
+	}
+	if len(req.PlayerName) == 0 {
+		errorResponse(w, http.StatusBadRequest, "invalid field: playerName")
 		return
 	}
 
@@ -172,7 +184,7 @@ func (a *app) sessionEndTurn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session, err = game.EndTurn(session, req.Player)
+	session, err = game.EndTurn(session, req.PlayerName)
 	if err != nil {
 		errorResponse(w, http.StatusNotAcceptable, err.Error())
 		return
@@ -198,8 +210,8 @@ func (a *app) sessionEndTurn(w http.ResponseWriter, r *http.Request) {
 func (a *app) sessionWaitForTurn(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	var req struct {
-		SessionID string
-		Player    string
+		SessionID  string
+		PlayerName string
 	}
 	err := decoder.Decode(&req)
 	if err != nil {
@@ -207,7 +219,11 @@ func (a *app) sessionWaitForTurn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(req.SessionID) == 0 {
-		errorResponse(w, http.StatusBadRequest, "invalid sessionId")
+		errorResponse(w, http.StatusBadRequest, "invalid field: sessionId")
+		return
+	}
+	if len(req.PlayerName) == 0 {
+		errorResponse(w, http.StatusBadRequest, "invalid field: playerName")
 		return
 	}
 
@@ -217,17 +233,7 @@ func (a *app) sessionWaitForTurn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session, err = game.WaitForTurn(session, req.Player)
-	if err != nil {
-		errorResponse(w, http.StatusNotAcceptable, err.Error())
-		return
-	}
-
-	err = a.db.SaveSession(session)
-	if err != nil {
-		errorResponse(w, http.StatusInternalServerError, err.Error())
-		return
-	}
+	game.WaitForTurn(session, req.PlayerName)
 
 	result := map[string]interface{}{
 		"result": "ok",
@@ -251,7 +257,7 @@ func (a *app) sessionPlayers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(req.SessionID) == 0 {
-		errorResponse(w, http.StatusBadRequest, "invalid sessionId")
+		errorResponse(w, http.StatusBadRequest, "invalid field: sessionId")
 		return
 	}
 
@@ -289,7 +295,7 @@ func (a *app) sessionGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(req.SessionID) == 0 {
-		errorResponse(w, http.StatusBadRequest, "invalid sessionId")
+		errorResponse(w, http.StatusBadRequest, "invalid field: sessionId")
 		return
 	}
 
@@ -358,15 +364,15 @@ func (a *app) cardLay(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(req.SessionID) == 0 {
-		errorResponse(w, http.StatusBadRequest, "invalid sessionId")
+		errorResponse(w, http.StatusBadRequest, "invalid field: sessionId")
 		return
 	}
 	if len(req.Player) == 0 {
-		errorResponse(w, http.StatusBadRequest, "invalid player")
+		errorResponse(w, http.StatusBadRequest, "invalid field: player")
 		return
 	}
 	if len(req.Card) == 0 {
-		errorResponse(w, http.StatusBadRequest, "invalid card")
+		errorResponse(w, http.StatusBadRequest, "invalid field: card")
 		return
 	}
 
@@ -401,8 +407,8 @@ func (a *app) cardLay(w http.ResponseWriter, r *http.Request) {
 func (a *app) cardUnlay(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	var req struct {
-		SessionID string
-		Player    string
+		SessionID  string
+		PlayerName string
 	}
 	err := decoder.Decode(&req)
 	if err != nil {
@@ -410,11 +416,11 @@ func (a *app) cardUnlay(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(req.SessionID) == 0 {
-		errorResponse(w, http.StatusBadRequest, "invalid sessionId")
+		errorResponse(w, http.StatusBadRequest, "invalid field: sessionId")
 		return
 	}
-	if len(req.Player) == 0 {
-		errorResponse(w, http.StatusBadRequest, "invalid player")
+	if len(req.PlayerName) == 0 {
+		errorResponse(w, http.StatusBadRequest, "invalid field: playerName")
 		return
 	}
 
@@ -424,7 +430,7 @@ func (a *app) cardUnlay(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session, err = game.UnlayCard(session, req.Player)
+	session, err = game.UnlayCard(session, req.PlayerName)
 	if err != nil {
 		errorResponse(w, http.StatusNotAcceptable, err.Error())
 		return
@@ -449,8 +455,8 @@ func (a *app) cardUnlay(w http.ResponseWriter, r *http.Request) {
 func (a *app) deckPull(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	var req struct {
-		SessionID string
-		Player    string
+		SessionID  string
+		PlayerName string
 	}
 	err := decoder.Decode(&req)
 	if err != nil {
@@ -458,11 +464,11 @@ func (a *app) deckPull(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(req.SessionID) == 0 {
-		errorResponse(w, http.StatusBadRequest, "invalid sessionId")
+		errorResponse(w, http.StatusBadRequest, "invalid field: sessionId")
 		return
 	}
-	if len(req.Player) == 0 {
-		errorResponse(w, http.StatusBadRequest, "invalid player")
+	if len(req.PlayerName) == 0 {
+		errorResponse(w, http.StatusBadRequest, "invalid field: playerName")
 		return
 	}
 
@@ -472,7 +478,7 @@ func (a *app) deckPull(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session, err = game.PullDeck(session, req.Player)
+	session, err = game.PullDeck(session, req.PlayerName)
 	if err != nil {
 		errorResponse(w, http.StatusNotAcceptable, err.Error())
 		return
@@ -484,8 +490,10 @@ func (a *app) deckPull(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = renderJson(map[string]string{
+	player := session.Players[req.PlayerName]
+	err = renderJson(map[string]interface{}{
 		"result": "ok",
+		"cards":  player.Hand,
 	}, w)
 
 	if err != nil {

@@ -3,7 +3,6 @@ package game
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/MrBTTF/gophercises/deck"
 	"github.com/google/uuid"
@@ -28,22 +27,24 @@ func (c *Card) UnmarshalJSON(data []byte) error {
 }
 
 type Session struct {
-	ID            string             `json:id`
-	Name          string             `json:name`
-	HostPlayer    string             `json:hostPlayers`
-	Players       map[string]*Player `json:players`
-	PlayersOrders []string           `json:playersOrders`
-	Laid          []Card             `json:laid`
-	Deck          []Card             `json:deck`
+	ID            string             `json:"id"`
+	Name          string             `json:"name"`
+	HostPlayer    string             `json:"hostPlayers"`
+	Players       map[string]*Player `json:"players"`
+	PlayersOrders []string           `json:"playersOrders"`
+	Laid          []Card             `json:"laid"`
+	Deck          []Card             `json:"deck"`
 }
 
 func New(name string, hostPlayer string) *Session {
+	sessionId := uuid.New().String()
+	playersTurns[sessionId] = make(map[string]chan struct{})
 	return &Session{
-		ID:         uuid.New().String(),
+		ID:         sessionId,
 		Name:       name,
 		HostPlayer: hostPlayer,
 		Players: map[string]*Player{
-			hostPlayer: NewPlayer(hostPlayer),
+			hostPlayer: NewHostPlayer(hostPlayer),
 		},
 		PlayersOrders: []string{hostPlayer},
 	}
@@ -54,27 +55,8 @@ func (s Session) NextPlayer() *Player {
 }
 
 func (s Session) String() string {
-	var result strings.Builder
-	fmt.Fprintf(&result, "ID: %s\n", s.ID)
-	fmt.Fprintf(&result, "Name: %s\n", s.Name)
-	fmt.Fprintf(&result, "Host Player: %s\n", s.HostPlayer)
-	fmt.Fprintf(&result, "Laid: %s\n", s.Laid)
-	fmt.Fprintf(&result, "Players Orders: %s\n", s.PlayersOrders)
-	for _, player := range s.Players {
-		fmt.Fprintf(&result, "Player: %s\n", player.Name)
-		fmt.Fprint(&result, "\tHand: ")
-		for _, card := range player.Hand {
-			fmt.Fprintf(&result, "%s, ", card)
-		}
-		fmt.Fprintln(&result)
-		fmt.Fprint(&result, "\tLaid: ")
-		for _, card := range player.Laid {
-			fmt.Fprintf(&result, "%s, ", card)
-		}
-		fmt.Fprintln(&result)
-		fmt.Fprintf(&result, "\tState: %s\n", player.State)
-	}
-	return result.String()
+	result, _ := json.MarshalIndent(s, "", "\t")
+	return string(result)
 }
 
 func (s Session) Copy() *Session {
@@ -88,7 +70,6 @@ func (s Session) Copy() *Session {
 	copy(playersOrders, s.PlayersOrders)
 
 	players := make(map[string]*Player)
-	fmt.Printf("%+v\n", s.Players)
 	for name, player := range s.Players {
 		players[name] = player.Copy()
 	}
@@ -161,17 +142,30 @@ func (s State) end() (State, error) {
 }
 
 type Player struct {
-	Name        string     `json:name`
-	Hand        []Card     `json:hand`
-	Laid        []Card     `json:laid`
-	SuitOrdered *deck.Suit `json:suitOrdered`
-	State       `json:state`
+	Name        string     `json:"name"`
+	Hand        []Card     `json:"hand"`
+	Laid        []Card     `json:"laid"`
+	SuitOrdered *deck.Suit `json:"suitOrdered"`
+	HasTurn     bool       `json:"hasTurn"`
+	State       `json:"state"`
 }
 
 func NewPlayer(name string) *Player {
 	return &Player{
 		Name: name,
 	}
+}
+
+func NewHostPlayer(name string) *Player {
+	return &Player{
+		Name:    name,
+		HasTurn: true,
+	}
+}
+
+func (p Player) String() string {
+	result, _ := json.MarshalIndent(p, "", "\t")
+	return string(result)
 }
 
 func (p Player) Copy() *Player {
@@ -182,10 +176,11 @@ func (p Player) Copy() *Player {
 	copy(laid, p.Laid)
 
 	return &Player{
-		Name:  p.Name,
-		Hand:  hand,
-		Laid:  laid,
-		State: p.State,
+		Name:    p.Name,
+		Hand:    hand,
+		Laid:    laid,
+		State:   p.State,
+		HasTurn: p.HasTurn,
 	}
 }
 

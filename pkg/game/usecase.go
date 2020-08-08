@@ -54,12 +54,9 @@ func InitSession(session *Session) (*Session, error) {
 	_deck := createDeck()
 
 	players := newSession.Players
-	fmt.Println("InitSession")
-	fmt.Println(players)
 	if len(players) < 2 {
 		return nil, fmt.Errorf("Players must be more than 2")
 	}
-	playersTurns[newSession.ID] = make(map[string]chan struct{})
 	for player := range newSession.Players {
 		players[player].Laid = []Card{}
 		if player == session.HostPlayer {
@@ -70,7 +67,7 @@ func InitSession(session *Session) (*Session, error) {
 		players[player].Hand, _deck = _deck[len(_deck)-playerHandSize:], _deck[:len(_deck)-playerHandSize]
 		players[player].State = NextTurn
 
-		playersTurns[newSession.ID][players[player].Name] = make(chan struct{})
+		playersTurns[newSession.ID][player] <- struct{}{}
 	}
 
 	newSession.Players = players
@@ -87,6 +84,7 @@ func InitSession(session *Session) (*Session, error) {
 	}
 
 	newSession.Players[session.HostPlayer] = hostPlayer
+
 	return newSession, nil
 }
 
@@ -101,6 +99,17 @@ func mustBeCovered(card Card) bool {
 	return card.Rank == deck.Six || card.Rank == deck.Ace
 }
 
+func JoinSession(session *Session, playerName string) *Session {
+	newSession := session.Copy()
+
+	newSession.Players[playerName] = NewPlayer(playerName)
+	newSession.PlayersOrders = append(newSession.PlayersOrders, playerName)
+
+	playersTurns[newSession.ID][playerName] = make(chan struct{}, 1)
+
+	return newSession
+}
+
 func EndTurn(session *Session, playerName string) (*Session, error) {
 	newSession := session.Copy()
 
@@ -111,17 +120,7 @@ func EndTurn(session *Session, playerName string) (*Session, error) {
 		return nil, fmt.Errorf("Player %s can't end turn: %s", playerName, err)
 	}
 
-	nextPlayer := newSession.NextPlayer()
-	playersTurns[newSession.ID][nextPlayer.Name] <- struct{}{}
-
-	return newSession, nil
-}
-
-func WaitForTurn(session *Session, playerName string) (*Session, error) {
-	newSession := session.Copy()
-
-	player := newSession.Players[playerName]
-
+	player.HasTurn = false
 	nextPlayerPullIfMust(newSession, player)
 
 	newSession.Laid = append(newSession.Laid, player.Laid...)
@@ -129,13 +128,26 @@ func WaitForTurn(session *Session, playerName string) (*Session, error) {
 	newSession.Players[playerName] = player
 
 	nextPlayer := newSession.NextPlayer()
+	nextPlayer.HasTurn = true
 	nextPlayer.State = Start
 
 	newSession.PlayersOrders = append(newSession.PlayersOrders[1:], newSession.PlayersOrders[0])
 
-	<-playersTurns[newSession.ID][player.Name]
+	fmt.Println(playersTurns)
+	playersTurns[newSession.ID][nextPlayer.Name] <- struct{}{}
+	fmt.Println("End turn done")
 
 	return newSession, nil
+}
+
+func WaitForTurn(session *Session, playerName string) {
+	player := session.Players[playerName]
+	fmt.Println("WaitForTurn")
+	fmt.Println(session.ID)
+	fmt.Println(player.Name)
+	fmt.Println(playersTurns)
+	<-playersTurns[session.ID][player.Name]
+	fmt.Println("WaitForTurn done")
 }
 
 func nextPlayerPullIfMust(newSession *Session, currentPlayer *Player) {
@@ -255,6 +267,8 @@ func PullDeck(session *Session, playerName string) (*Session, error) {
 	newSession := session.Copy()
 
 	player := newSession.Players[playerName]
+	fmt.Println("playerName")
+	fmt.Println(playerName)
 
 	player, err := player.Pull()
 	if err != nil {

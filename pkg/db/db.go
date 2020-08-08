@@ -45,14 +45,6 @@ func (db *DB) CreateSession(sessionName, hostPlayer string) (string, error) {
 	return session.ID, err
 }
 
-func (db *DB) JoinSession(sessionID, playerName string) error {
-	session, err := db.GetSession(sessionID)
-	session.Players[playerName] = game.NewPlayer(playerName)
-	session.PlayersOrders = append(session.PlayersOrders, playerName)
-	err = db.SaveSession(session)
-	return err
-}
-
 func (db *DB) SaveSession(session *game.Session) error {
 	fmt.Println("New Session:")
 	fmt.Println(session)
