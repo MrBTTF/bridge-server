@@ -7,10 +7,9 @@ import (
 )
 
 var (
-	bridgeDeck   []Card
-	strToCard    map[string]Card
-	cardToStr    map[Card]string
-	playersTurns map[string]map[string]chan struct{}
+	bridgeDeck []Card
+	strToCard  map[string]Card
+	cardToStr  map[Card]string
 )
 
 func init() {
@@ -36,8 +35,6 @@ func init() {
 			cardToStr[strToCard[suit+rank]] = suit + rank
 		}
 	}
-
-	playersTurns = make(map[string]map[string]chan struct{})
 }
 
 func fromDeckCard(deck []deck.Card) []Card {
@@ -66,8 +63,6 @@ func InitSession(session *Session) (*Session, error) {
 		}
 		players[player].Hand, _deck = _deck[len(_deck)-playerHandSize:], _deck[:len(_deck)-playerHandSize]
 		players[player].State = NextTurn
-
-		playersTurns[newSession.ID][player] <- struct{}{}
 	}
 
 	newSession.Players = players
@@ -84,6 +79,8 @@ func InitSession(session *Session) (*Session, error) {
 	}
 
 	newSession.Players[session.HostPlayer] = hostPlayer
+
+	newSession.Started = true
 
 	return newSession, nil
 }
@@ -104,8 +101,6 @@ func JoinSession(session *Session, playerName string) *Session {
 
 	newSession.Players[playerName] = NewPlayer(playerName)
 	newSession.PlayersOrders = append(newSession.PlayersOrders, playerName)
-
-	playersTurns[newSession.ID][playerName] = make(chan struct{}, 1)
 
 	return newSession
 }
@@ -133,21 +128,19 @@ func EndTurn(session *Session, playerName string) (*Session, error) {
 
 	newSession.PlayersOrders = append(newSession.PlayersOrders[1:], newSession.PlayersOrders[0])
 
-	fmt.Println(playersTurns)
-	playersTurns[newSession.ID][nextPlayer.Name] <- struct{}{}
 	fmt.Println("End turn done")
 
 	return newSession, nil
 }
 
-func WaitForTurn(session *Session, playerName string) {
+func CheckTurn(session *Session, playerName string) bool {
 	player := session.Players[playerName]
-	fmt.Println("WaitForTurn")
-	fmt.Println(session.ID)
-	fmt.Println(player.Name)
-	fmt.Println(playersTurns)
-	<-playersTurns[session.ID][player.Name]
-	fmt.Println("WaitForTurn done")
+	fmt.Println(player)
+	return player.HasTurn
+}
+
+func CheckStart(session *Session) bool {
+	return session.Started
 }
 
 func nextPlayerPullIfMust(newSession *Session, currentPlayer *Player) {
@@ -175,8 +168,13 @@ func LayCard(session *Session, playerName, cardStr, suit string) (*Session, erro
 
 	newSession := session.Copy()
 
-	player := newSession.Players[playerName]
+	player, ok := newSession.Players[playerName]
+	if !ok {
+		return nil, fmt.Errorf("Invalid player: %s", playerName)
+	}
+
 	playerHasCard := false
+	fmt.Println(session)
 	for i, c := range player.Hand {
 		if c == card {
 			player.Hand = append(player.Hand[:i], player.Hand[i+1:]...)
@@ -233,7 +231,6 @@ func UnlayCard(session *Session, playerName string) (*Session, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Player %s can't unlay: %s", playerName, err)
 	}
-
 	player.Hand = append(player.Hand, player.Laid[len(player.Laid)-1])
 	player.Laid = player.Laid[:len(player.Laid)-1]
 	newSession.Players[playerName] = player

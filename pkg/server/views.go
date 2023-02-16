@@ -11,7 +11,7 @@ import (
 )
 
 type app struct {
-	db db.DB
+	db game.DB
 }
 
 func renderJson(data interface{}, w http.ResponseWriter) error {
@@ -92,6 +92,18 @@ func (a *app) sessionJoin(w http.ResponseWriter, r *http.Request) {
 	session, err := a.db.GetSession(req.SessionID)
 	if err != nil {
 		errorResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	_, ok := session.Players[req.PlayerName]
+	if ok {
+		err = renderJson(map[string]string{
+			"result": "player already joined",
+		}, w)
+
+		if err != nil {
+			errorResponse(w, http.StatusBadRequest, err.Error())
+		}
 		return
 	}
 
@@ -233,10 +245,44 @@ func (a *app) sessionWaitForTurn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	game.WaitForTurn(session, req.PlayerName)
+	hasTurn := game.CheckTurn(session, req.PlayerName)
 
 	result := map[string]interface{}{
-		"result": "ok",
+		"hasTurn": hasTurn,
+	}
+	err = renderJson(result, w)
+
+	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+}
+
+func (a *app) sessionWaitForStart(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var req struct {
+		SessionID string
+	}
+	err := decoder.Decode(&req)
+	if err != nil {
+		errorResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if len(req.SessionID) == 0 {
+		errorResponse(w, http.StatusBadRequest, "invalid field: sessionId")
+		return
+	}
+
+	session, err := a.db.GetSession(req.SessionID)
+	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	started := game.CheckStart(session)
+
+	result := map[string]interface{}{
+		"started": started,
 	}
 	err = renderJson(result, w)
 
@@ -510,7 +556,7 @@ func Start(port string) error {
 	defer db.Close()
 
 	app := &app{
-		db: *db,
+		db: db,
 	}
 
 	r := mux.NewRouter()
@@ -521,6 +567,7 @@ func Start(port string) error {
 	session.HandleFunc("/start", app.sessionStart).Methods("POST")
 	session.HandleFunc("/endTurn", app.sessionEndTurn).Methods("POST")
 	session.HandleFunc("/waitForTurn", app.sessionWaitForTurn).Methods("POST")
+	session.HandleFunc("/waitForStart", app.sessionWaitForStart).Methods("POST")
 	session.HandleFunc("/players", app.sessionPlayers).Methods("POST")
 	session.HandleFunc("/list", app.sessionList).Methods("GET")
 	session.HandleFunc("/get", app.sessionGet).Methods("POST")

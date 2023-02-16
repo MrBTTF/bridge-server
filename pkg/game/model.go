@@ -32,13 +32,13 @@ type Session struct {
 	HostPlayer    string             `json:"hostPlayers"`
 	Players       map[string]*Player `json:"players"`
 	PlayersOrders []string           `json:"playersOrders"`
+	Started       bool               `json:"started"`
 	Laid          []Card             `json:"laid"`
 	Deck          []Card             `json:"deck"`
 }
 
 func New(name string, hostPlayer string) *Session {
 	sessionId := uuid.New().String()
-	playersTurns[sessionId] = make(map[string]chan struct{})
 	return &Session{
 		ID:         sessionId,
 		Name:       name,
@@ -47,6 +47,7 @@ func New(name string, hostPlayer string) *Session {
 			hostPlayer: NewHostPlayer(hostPlayer),
 		},
 		PlayersOrders: []string{hostPlayer},
+		Started:       false,
 	}
 }
 
@@ -81,6 +82,7 @@ func (s Session) Copy() *Session {
 		PlayersOrders: playersOrders,
 		Deck:          newDeck,
 		Laid:          laid,
+		Started:       s.Started,
 	}
 }
 
