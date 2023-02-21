@@ -1,4 +1,4 @@
-package core
+package state
 
 import (
 	"testing"
@@ -6,6 +6,13 @@ import (
 	"github.com/MrBTTF/gophercises/deck"
 	"github.com/stretchr/testify/assert"
 )
+
+func NewCard(suit deck.Suit, rank deck.Rank) Card {
+	return Card{
+		Suit: suit,
+		Rank: rank,
+	}
+}
 
 func TestStateMustLayOrPull(t *testing.T) {
 	state := StateWaitForTurn
@@ -72,7 +79,6 @@ func TestStateMustLayOrPullFor8Ace(t *testing.T) {
 	if assert.NoError(t, err) {
 		assert.Equal(t, state.String(), StateCanLay.String())
 	}
-
 
 	state, err = state.OnEndTurn(card)
 	if assert.NoError(t, err) {

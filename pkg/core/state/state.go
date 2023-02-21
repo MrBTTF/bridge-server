@@ -1,4 +1,4 @@
-package core
+package state
 
 import (
 	"fmt"
@@ -7,13 +7,6 @@ import (
 )
 
 type Card = deck.Card
-
-func NewCard(suit deck.Suit, rank deck.Rank) Card {
-	return Card{
-		Suit: suit,
-		Rank: rank,
-	}
-}
 
 var mustLayCards = []deck.Rank{deck.Six, deck.Eight, deck.Ace}
 
