@@ -3,6 +3,7 @@ package session
 import (
 	"testing"
 
+	"github.com/MrBTTF/gophercises/deck"
 	"github.com/mrbttf/bridge-server/pkg/core"
 	"github.com/stretchr/testify/assert"
 )
@@ -63,8 +64,9 @@ func TestSession(t *testing.T) {
 	}
 
 	_deck := core.NewDeck()
-	tableCard := _deck[len(_deck)-1]
-	playerCard := _deck[len(_deck)-2]
+	tableCard := core.NewCard(deck.Diamond, deck.Queen)
+	playerCard := core.NewCard(deck.Heart, deck.Queen)
+	setLastCards(_deck, tableCard, playerCard)
 	session_service := New(sessions, players)
 	session_id, err := session_service.Create([]string{player_id}, _deck)
 	if err != nil {
@@ -104,4 +106,16 @@ func TestSession(t *testing.T) {
 	}
 	assert.Contains(t, session.Table, tableCard)
 	assert.NotContains(t, player.Cards, playerCard)
+}
+
+func setLastCards(_deck []deck.Card, tableCard, playerCard deck.Card) {
+	for i, card := range _deck {
+		if card == tableCard {
+			_deck[i] = _deck[len(_deck)-1]
+		} else if card == playerCard {
+			_deck[i] = _deck[len(_deck)-2]
+		}
+	}
+	_deck[len(_deck)-1] = tableCard
+	_deck[len(_deck)-2] = playerCard
 }

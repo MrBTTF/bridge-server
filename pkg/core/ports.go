@@ -13,8 +13,8 @@ type PlayerRepository interface {
 }
 
 type SessionServicePort interface {
-	Create([]string) error
-	Pull(string, string) error
-	Lay(string, string, Card) error
-	NextTurn(string) error
+	Create([]int) error
+	Pull(int, int) error
+	Lay(int, int, Card) error
+	NextTurn(int) error
 }

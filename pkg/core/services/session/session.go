@@ -7,6 +7,7 @@ import (
 	"github.com/MrBTTF/gophercises/deck"
 	"github.com/google/uuid"
 	"github.com/mrbttf/bridge-server/pkg/core"
+	"github.com/mrbttf/bridge-server/pkg/core/state"
 )
 
 var (
@@ -26,23 +27,62 @@ func New(sessions core.SessionRepository, players core.PlayerRepository) *Sessio
 	}
 }
 
-func (s *SessionService) Create(players []string, _deck []deck.Card) (string, error) {
-	last_idx := len(_deck) - 1
-	card := _deck[last_idx]
-	_deck = _deck[:last_idx]
-	table := []core.Card{card}
+func (s *SessionService) GetSession(sessionId string) (core.Session, error) {
+	return s.sessions.Get(sessionId)
+}
+
+func (s *SessionService) GetPlayer(sessionplayerId string) (core.Player, error) {
+	return s.players.Get(sessionplayerId)
+}
+
+func (s *SessionService) Create(player_ids []string, _deck []deck.Card) (string, error) {
+	if _deck == nil {
+		_deck = core.NewDeck()
+	}
+
+	_deck, table := popDeck(_deck, 1)
 
 	session_id := uuid.New().String()
+
+	players := make([]core.Player, 0, len(player_ids))
+
+	first_player_id := player_ids[0]
+	_deck, cards := popDeck(_deck, 5)
+	players = append(players, core.Player{
+		Id:        first_player_id,
+		Cards:     cards,
+		Name:      "",
+		State:     state.StateWaitForTurn,
+		SessionId: session_id,
+	})
+
+	for _, id := range player_ids[1:] {
+		_deck, cards = popDeck(_deck, 4)
+		players = append(players, core.Player{
+			Id:        id,
+			Cards:     cards,
+			Name:      "",
+			State:     state.StateWaitForTurn,
+			SessionId: session_id,
+		})
+	}
+
 	session := &core.Session{
 		Id:            session_id,
-		Players:       players,
+		Players:       player_ids,
 		Deck:          _deck,
 		Table:         table,
-		CurrentPlayer: players[0],
+		CurrentPlayer: player_ids[0],
 	}
 	err := s.sessions.Store(session)
 	if err != nil {
 		return "", fmt.Errorf("Unable to create session: %w", err)
+	}
+	for _, player := range players {
+		err = s.players.Store(&player)
+		if err != nil {
+			return "", fmt.Errorf("Unable to create session: %w", err)
+		}
 	}
 	return session_id, nil
 }
@@ -149,7 +189,6 @@ func (s *SessionService) NextTurn(session_id, player_id string) error {
 		return fmt.Errorf("Unable to change turn for session %s, player %s: %w", session_id, player_id, err)
 	}
 
-	
 	err = s.sessions.Store(&session)
 	if err != nil {
 		return fmt.Errorf("Unable to change turn for session %s, player %s: %w", session_id, player_id, err)
@@ -172,4 +211,15 @@ func layCardOnTable(table []deck.Card, card deck.Card) error {
 		return nil
 	}
 	return fmt.Errorf("Cannot lay %s on %s", card, topCard)
+}
+
+func popDeck(_deck []deck.Card, n int) ([]deck.Card, []deck.Card) {
+	if n <= 0 {
+		panic("cannot pop less than 1 card")
+	}
+	pop_idx := len(_deck) - n
+	cards := make([]deck.Card, n)
+	copy(cards, _deck[pop_idx:])
+	_deck = _deck[:pop_idx]
+	return _deck, cards
 }

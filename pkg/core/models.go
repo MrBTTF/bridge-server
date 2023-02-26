@@ -14,24 +14,25 @@ func NewCard(suit deck.Suit, rank deck.Rank) deck.Card {
 	}
 }
 
-func NewDeck() []deck.Card{
+func NewDeck() []deck.Card {
 	return deck.New(deck.Filter(func(card deck.Card) bool {
 		return card.Rank < deck.Six && card.Rank != deck.Ace
 	}), deck.Shuffle)
 }
 
 type Player struct {
-	Id    string
-	Name  string
-	Cards []Card
-	State state.State
+	Id        string
+	Name      string
+	Cards     []Card
+	State     state.State
+	SessionId string
 }
 
 type Session struct {
-	Id      string
-	Players []string
-	Deck    []Card
-	Table   []Card
+	Id            string
+	Players       []string
+	Deck          []Card
+	Table         []Card
 	CurrentPlayer string
 }
 
