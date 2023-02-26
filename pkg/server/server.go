@@ -40,7 +40,7 @@ func New(sessionService *session.SessionService) *Server {
 	s.router.Post("/session/create", s.sessionCreate)
 	s.router.Post("/session/lay", s.sessionLay)
 	s.router.Post("/session/pull", s.sessionPull)
-	s.router.Post("/session/endTurn", s.sessionEndTurn)
+	s.router.Post("/session/nextTurn", s.sessionNextTurn)
 
 	s.router.Get("/docs/*", httpSwagger.WrapHandler)
 	return s
@@ -118,7 +118,7 @@ func (s *Server) sessionCreate(w http.ResponseWriter, r *http.Request) {
 // @Accept   json
 // @Produce  json
 // @Param body body sessionLayRequest true "Body"
-// @Success 200 {object} sessionLayResponse
+// @Success 200 {object} DefaultResponse
 // @Router /session/lay [post]
 func (s *Server) sessionLay(w http.ResponseWriter, r *http.Request) {
 	data := &sessionLayRequest{}
@@ -133,15 +133,57 @@ func (s *Server) sessionLay(w http.ResponseWriter, r *http.Request) {
 		renderError(w, r, http.StatusInternalServerError, err, err)
 		return
 	}
-	render.Render(w, r, &sessionLayResponse{})
+	render.Render(w, r, &DefaultResponse{})
 }
 
+// session/pull godoc
+// @Summary Pulls a card
+// @Description Pulls a card for player and session id
+// @Tags session
+// @Accept   json
+// @Produce  json
+// @Param body body sessionPullRequest true "Body"
+// @Success 200 {object} DefaultResponse
+// @Router /session/pull [post]
 func (s *Server) sessionPull(w http.ResponseWriter, r *http.Request) {
+	data := &sessionPullRequest{}
 
+	if err := render.Bind(r, data); err != nil {
+		renderError(w, r, http.StatusBadRequest, ErrServerBadRequest, err)
+		return
+	}
+	err := s.sessionService.Pull(data.SessionId, data.PlayerId)
+	if err != nil {
+		renderError(w, r, http.StatusInternalServerError, err, err)
+		return
+	}
+	render.Render(w, r, &DefaultResponse{})
 }
 
-func (s *Server) sessionEndTurn(w http.ResponseWriter, r *http.Request) {
 
+
+// session/nextTurn godoc
+// @Summary Next turn
+// @Description Ends turn for player id and passes turn to next player
+// @Tags session
+// @Accept   json
+// @Produce  json
+// @Param body body sessionNextTurnRequest true "Body"
+// @Success 200 {object} DefaultResponse
+// @Router /session/nextTurn [post]
+func (s *Server) sessionNextTurn(w http.ResponseWriter, r *http.Request) {
+	data := &sessionNextTurnRequest{}
+
+	if err := render.Bind(r, data); err != nil {
+		renderError(w, r, http.StatusBadRequest, ErrServerBadRequest, err)
+		return
+	}
+	err := s.sessionService.NextTurn(data.SessionId, data.PlayerId)
+	if err != nil {
+		renderError(w, r, http.StatusInternalServerError, err, err)
+		return
+	}
+	render.Render(w, r, &DefaultResponse{})
 }
 
 func renderError(w http.ResponseWriter, r *http.Request, code int, message error, err error) {

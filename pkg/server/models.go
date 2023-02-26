@@ -25,6 +25,18 @@ type sessionLayRequest struct {
 	DefaultRequest
 }
 
+type sessionPullRequest struct {
+	SessionId string `json:"session_id" example:"string"`
+	PlayerId string `json:"player_id" example:"string"`
+	DefaultRequest
+}
+
+type sessionNextTurnRequest struct {
+	SessionId string `json:"session_id" example:"string"`
+	PlayerId string `json:"player_id" example:"string"`
+	DefaultRequest
+}
+
 type PlayerResponse struct {
 	Id        string
 	Name      string
@@ -64,10 +76,6 @@ type sessionGetResponse struct {
 
 type sessionCreateResponse struct {
 	SessionID string `json:"session_id" example:"string"`
-	DefaultResponse
-}
-
-type sessionLayResponse struct {
 	DefaultResponse
 }
 
