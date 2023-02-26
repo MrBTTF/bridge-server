@@ -12,6 +12,7 @@ type Config struct {
 	DBUser     string
 	DBPassword string
 	DBName     string
+	ServerSubroute    string
 }
 
 func GetConfig(env string) (Config, error) {
@@ -27,5 +28,6 @@ func GetConfig(env string) (Config, error) {
 		DBUser:     os.Getenv("DB_USER"),
 		DBPassword: os.Getenv("DB_PASSWORD"),
 		DBName:     os.Getenv("DB_NAME"),
+		ServerSubroute:     os.Getenv("SERVER_SUBROUTE"),
 	}, nil
 }

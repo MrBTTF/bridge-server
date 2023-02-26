@@ -2,17 +2,18 @@ package server
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
+	"github.com/mrbttf/bridge-server/pkg/config"
 	"github.com/mrbttf/bridge-server/pkg/core/services/session"
 	"github.com/mrbttf/bridge-server/pkg/log"
 	"github.com/mrbttf/bridge-server/pkg/repositories"
+	httpSwagger "github.com/swaggo/http-swagger"
 
 	_ "github.com/mrbttf/bridge-server/docs"
-
-	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 var (
@@ -28,7 +29,7 @@ type Server struct {
 	sessionService *session.SessionService
 }
 
-func New(sessionService *session.SessionService) *Server {
+func New(sessionService *session.SessionService, config config.Config) *Server {
 	s := &Server{
 		router:         chi.NewRouter(),
 		sessionService: sessionService,
@@ -36,19 +37,28 @@ func New(sessionService *session.SessionService) *Server {
 
 	s.router.Use(render.SetContentType(render.ContentTypeJSON))
 
-	s.router.Get("/session/{session_id}", s.sessionGet)
-	s.router.Post("/session/create", s.sessionCreate)
-	s.router.Post("/session/lay", s.sessionLay)
-	s.router.Post("/session/pull", s.sessionPull)
-	s.router.Post("/session/nextTurn", s.sessionNextTurn)
+	root := chi.NewMux()
+	root.Get("/session/{session_id}", s.sessionGet)
+	root.Post("/session/create", s.sessionCreate)
+	root.Post("/session/lay", s.sessionLay)
+	root.Post("/session/pull", s.sessionPull)
+	root.Post("/session/nextTurn", s.sessionNextTurn)
 
-	s.router.Get("/docs/*", httpSwagger.WrapHandler)
+	root.Get("/health", s.health)
+	root.Get("/docs/*", httpSwagger.WrapHandler)
+
+	subroute := "/" + config.ServerSubroute
+	s.router.Mount(subroute, root)
 	return s
 }
 
 func (s *Server) Run(addr string) error {
 	log.Info("Server running on ", addr)
 	return http.ListenAndServe(addr, s.router)
+}
+
+func (s *Server) health(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "OK")
 }
 
 // session/ godoc
@@ -159,8 +169,6 @@ func (s *Server) sessionPull(w http.ResponseWriter, r *http.Request) {
 	}
 	render.Render(w, r, &DefaultResponse{})
 }
-
-
 
 // session/nextTurn godoc
 // @Summary Next turn

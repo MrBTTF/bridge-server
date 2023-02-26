@@ -33,7 +33,7 @@ func main() {
 		repository,
 		playerRepository,
 	)
-	server := server.New(serviceSession)
+	server := server.New(serviceSession, config)
 	err = server.Run(":" + port)
 	if err != nil {
 		log.Fatal(err)
