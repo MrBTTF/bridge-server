@@ -10,30 +10,49 @@ import (
 
 type sessionGetRequest struct {
 	SessionId string `json:"session_id" example:"string"`
-	DefaultRequest
+	AuthRequest
 }
 
 type sessionCreateRequest struct {
 	PlayerIds []string `json:"player_ids" example:"string"`
-	DefaultRequest
+	AuthRequest
 }
 
 type sessionLayRequest struct {
 	SessionId string `json:"session_id" example:"string"`
-	PlayerId string `json:"player_id" example:"string"`
-	Card     string `json:"card" example:"string"`
-	DefaultRequest
+	PlayerId  string `json:"player_id" example:"string"`
+	Card      string `json:"card" example:"string"`
+	AuthRequest
 }
 
 type sessionPullRequest struct {
 	SessionId string `json:"session_id" example:"string"`
-	PlayerId string `json:"player_id" example:"string"`
-	DefaultRequest
+	PlayerId  string `json:"player_id" example:"string"`
+	AuthRequest
 }
 
 type sessionNextTurnRequest struct {
 	SessionId string `json:"session_id" example:"string"`
-	PlayerId string `json:"player_id" example:"string"`
+	PlayerId  string `json:"player_id" example:"string"`
+	AuthRequest
+}
+
+type authRegisterRequest struct {
+	Email    string `json:"email" example:"string"`
+	Password string `json:"password" example:"string"`
+	Nickname string `json:"nickname" example:"string"`
+	DefaultRequest
+}
+
+type authLoginRequest struct {
+	Email    string `json:"email" example:"string"`
+	Password string `json:"password" example:"string"`
+	DefaultRequest
+}
+
+type authLogoutRequest struct {
+	Email string `json:"email" example:"string"`
+	Token string `json:"token" example:"string"`
 	DefaultRequest
 }
 
@@ -61,7 +80,7 @@ func NewSessionResponse(session *core.Session, player *core.Player) *SessionResp
 		Players: session.Players,
 		CurrentPlayer: PlayerResponse{
 			Id:        player.Id,
-			Name:      player.Name,
+			Name:      player.Nickname,
 			Cards:     repositories.DeckToString(player.Cards),
 			State:     player.State.String(),
 			SessionId: player.SessionId,
@@ -79,6 +98,33 @@ type sessionCreateResponse struct {
 	DefaultResponse
 }
 
+type authRegisterResponse struct {
+	DefaultResponse
+}
+
+type UserResponse struct {
+	Id       string
+	Nickname string
+	Token    string
+}
+
+func NewUserResponse(user *core.User) *UserResponse {
+	return &UserResponse{
+		Id:       user.Id,
+		Nickname: user.Nickname,
+		Token:    user.Token,
+	}
+}
+
+type authLoginResponse struct {
+	User UserResponse `json:"user" example:UserResponse`
+	DefaultResponse
+}
+
+type authLogoutResponse struct {
+	DefaultResponse
+}
+
 type ErrResponse struct {
 	Code int `json:"-"`
 
@@ -90,6 +136,12 @@ func (er ErrResponse) Render(w http.ResponseWriter, r *http.Request) error {
 	er.Success = false
 	render.Status(r, er.Code)
 	return nil
+}
+
+type AuthRequest struct {
+	UserId string `json:"user_id" example:"string"`
+	Token  string `json:"token" example:"string"`
+	DefaultRequest
 }
 
 type DefaultRequest struct {

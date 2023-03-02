@@ -20,9 +20,17 @@ func NewDeck() []deck.Card {
 	}), deck.Shuffle)
 }
 
+type User struct {
+	Id       string
+	Email    string
+	Password    string
+	Nickname string
+	Token    string
+}
+
 type Player struct {
 	Id        string
-	Name      string
+	Nickname  string
 	Cards     []Card
 	State     state.State
 	SessionId string

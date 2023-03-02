@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS sessions (
 
 CREATE TABLE IF NOT EXISTS players (
     user_id text NOT NULL,
-    name text,
+    nickname text,
     cards    text[][],
     state    smallint,
     state_name    text,
@@ -24,7 +24,10 @@ CREATE TABLE IF NOT EXISTS players (
 
 CREATE TABLE IF NOT EXISTS users (
     user_id text PRIMARY KEY,
-    name text,
+    email text,
+    password text,
+    nickname text,
+    token text,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -37,6 +40,6 @@ ALTER TABLE players
     ADD FOREIGN KEY (user_id) 
         REFERENCES users (user_id);
 
-INSERT INTO users (user_id)
-values ('user1'),
-       ('user2');
+-- INSERT INTO users (user_id)
+-- values ('user1'),
+--        ('user2');

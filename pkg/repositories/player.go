@@ -17,7 +17,7 @@ func NewPlayerRepository(db *sql.DB) *PlayerRepository {
 }
 
 const SelectPlayer = `
-SELECT user_id, name, cards, state, session_id
+SELECT user_id, nickname, cards, state, session_id
 FROM players
 WHERE user_id = $1
 `
@@ -27,7 +27,7 @@ func (pp *PlayerRepository) Get(player_id string) (core.Player, error) {
 	var cards []string
 	err := pp.db.QueryRow(SelectPlayer, player_id).Scan(
 		&player.Id,
-		&player.Name,
+		&player.Nickname,
 		pq.Array(&cards),
 		&player.State,
 		&player.SessionId,
@@ -41,24 +41,24 @@ func (pp *PlayerRepository) Get(player_id string) (core.Player, error) {
 }
 
 const UpsertPlayer = `
-INSERT INTO players (user_id, name, cards, state, state_name, session_id)
+INSERT INTO players (user_id, nickname, cards, state, state_name, session_id)
 VALUES($1, $2, $3, $4, $5, $6) 
 ON CONFLICT (user_id, session_id) 
 WHERE user_id = $1 AND session_id = $6  
 DO UPDATE
 SET 
-user_id = EXCLUDED.user_id, 
-name = EXCLUDED.name, 
-cards = EXCLUDED.cards, 
-state = EXCLUDED.state, 
-state_name = EXCLUDED.state_name, 
-session_id = EXCLUDED.session_id
+	user_id = EXCLUDED.user_id, 
+	nickname = EXCLUDED.nickname, 
+	cards = EXCLUDED.cards, 
+	state = EXCLUDED.state, 
+	state_name = EXCLUDED.state_name, 
+	session_id = EXCLUDED.session_id
 `
 
 func (pp *PlayerRepository) Store(player *core.Player) error {
 	cards := DeckToString(player.Cards)
 	_, err := pp.db.Exec(UpsertPlayer,
-		player.Id, player.Name, pq.Array(cards),
+		player.Id, player.Nickname, pq.Array(cards),
 		player.State, player.State.String(), player.SessionId,
 	)
 	if err != nil {

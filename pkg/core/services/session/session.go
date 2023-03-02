@@ -18,6 +18,7 @@ var (
 type SessionService struct {
 	sessions core.SessionRepository
 	players  core.PlayerRepository
+	//user  core.UserRepository
 }
 
 func New(sessions core.SessionRepository, players core.PlayerRepository) *SessionService {
@@ -44,6 +45,7 @@ func (s *SessionService) Create(player_ids []string, _deck []deck.Card) (string,
 
 	session_id := uuid.New().String()
 
+	// get users nicknames
 	players := make([]core.Player, 0, len(player_ids))
 
 	first_player_id := player_ids[0]
@@ -51,7 +53,7 @@ func (s *SessionService) Create(player_ids []string, _deck []deck.Card) (string,
 	players = append(players, core.Player{
 		Id:        first_player_id,
 		Cards:     cards,
-		Name:      "",
+		Nickname:  "",
 		State:     state.StateWaitForTurn,
 		SessionId: session_id,
 	})
@@ -61,7 +63,7 @@ func (s *SessionService) Create(player_ids []string, _deck []deck.Card) (string,
 		players = append(players, core.Player{
 			Id:        id,
 			Cards:     cards,
-			Name:      "",
+			Nickname:  "",
 			State:     state.StateWaitForTurn,
 			SessionId: session_id,
 		})

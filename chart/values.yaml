@@ -73,9 +73,9 @@ ingress:
   annotations: 
     ingress.kubernetes.io/ssl-redirect: "false"
   hosts:
-    - host: zalizniak.duckdns.org
+    - host: bridge.zalizniak.duckdns.org
       paths:
-        - path: /bridge
+        - path: /
           pathType: Prefix
           backend:
             service:

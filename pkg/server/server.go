@@ -8,7 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 	"github.com/mrbttf/bridge-server/pkg/config"
-	"github.com/mrbttf/bridge-server/pkg/core/services/session"
+	"github.com/mrbttf/bridge-server/pkg/core"
 	"github.com/mrbttf/bridge-server/pkg/log"
 	"github.com/mrbttf/bridge-server/pkg/repositories"
 	httpSwagger "github.com/swaggo/http-swagger"
@@ -19,6 +19,7 @@ import (
 var (
 	ErrServerBadRequest = errors.New("Bad request occured")
 	ErrServerInternal   = errors.New("Internal server error")
+	ErrServerForbidden  = errors.New("Forbidden")
 
 	ErrServerSessionIdInvalid  = errors.New("session_id parameter is invalid")
 	ErrServerSessionIdNotFound = errors.New("Session ID not found")
@@ -26,29 +27,36 @@ var (
 
 type Server struct {
 	router         *chi.Mux
-	sessionService *session.SessionService
+	sessionService core.SessionServicePort
+	authService    core.AuthServicePort
 }
 
-func New(sessionService *session.SessionService, config config.Config) *Server {
+func New(
+	sessionService core.SessionServicePort,
+	authService core.AuthServicePort,
+	config config.Config,
+) *Server {
 	s := &Server{
 		router:         chi.NewRouter(),
 		sessionService: sessionService,
+		authService:    authService,
 	}
 
 	s.router.Use(render.SetContentType(render.ContentTypeJSON))
 
-	root := chi.NewMux()
-	root.Get("/session/{session_id}", s.sessionGet)
-	root.Post("/session/create", s.sessionCreate)
-	root.Post("/session/lay", s.sessionLay)
-	root.Post("/session/pull", s.sessionPull)
-	root.Post("/session/nextTurn", s.sessionNextTurn)
+	s.router.With(s.AuthMiddleware).Get("/session/{session_id}", s.sessionGet)
+	s.router.With(s.AuthMiddleware).Post("/session/create", s.sessionCreate)
+	s.router.With(s.AuthMiddleware).Post("/session/lay", s.sessionLay)
+	s.router.With(s.AuthMiddleware).Post("/session/pull", s.sessionPull)
+	s.router.With(s.AuthMiddleware).Post("/session/nextTurn", s.sessionNextTurn)
 
-	root.Get("/health", s.health)
-	root.Get("/docs/*", httpSwagger.WrapHandler)
+	s.router.Post("/auth/register", s.authRegister)
+	s.router.Post("/auth/login", s.authLogin)
+	s.router.Post("/auth/logout", s.authLogout)
 
-	subroute := "/" + config.ServerSubroute
-	s.router.Mount(subroute, root)
+	s.router.Get("/health", s.health)
+	s.router.Get("/docs/*", httpSwagger.WrapHandler)
+
 	return s
 }
 
@@ -67,6 +75,7 @@ func (s *Server) health(w http.ResponseWriter, r *http.Request) {
 // @Tags session
 // @Produce  json
 // @Param session_id path string true "ID of session"
+// @Param token query string true "token"
 // @Success 200 {object} sessionGetResponse
 // @Router /session/{session_id} [get]
 func (s *Server) sessionGet(w http.ResponseWriter, r *http.Request) {
@@ -99,7 +108,7 @@ func (s *Server) sessionGet(w http.ResponseWriter, r *http.Request) {
 // @Tags session
 // @Accept   json
 // @Produce  json
-// @Param player_ids body sessionCreateRequest true "Ids of players in the session"
+// @Param session_body body sessionCreateRequest true "Ids of players in the session"
 // @Success 200 {object} sessionCreateResponse
 // // @Failure 400 {object} failureResponse
 // // @Failure 500 {object} failureResponse
@@ -192,6 +201,90 @@ func (s *Server) sessionNextTurn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	render.Render(w, r, &DefaultResponse{})
+}
+
+// auth/register godoc
+// @Summary Registers user
+// @Description Registers user
+// @Tags auth
+// @Accept   json
+// @Produce  json
+// @Param register_body body authRegisterRequest true "Body"
+// @Success 200 {object} authRegisterResponse
+// @Router /auth/register [post]
+func (s *Server) authRegister(w http.ResponseWriter, r *http.Request) {
+	data := &authRegisterRequest{}
+
+	if err := render.Bind(r, data); err != nil {
+		renderError(w, r, http.StatusBadRequest, ErrServerBadRequest, err)
+		return
+	}
+	err := s.authService.Register(
+		data.Email,
+		data.Password,
+		data.Nickname,
+	)
+	if err != nil {
+		renderError(w, r, http.StatusInternalServerError, ErrServerInternal, err)
+		return
+	}
+	render.Render(w, r, &authRegisterResponse{})
+}
+
+// auth/login godoc
+// @Summary Logs user in
+// @Description Logs user in and returns user data
+// @Tags auth
+// @Accept   json
+// @Produce  json
+// @Param login_body body authLoginRequest true "Body"
+// @Success 200 {object} authLoginResponse
+// @Router /auth/login [post]
+func (s *Server) authLogin(w http.ResponseWriter, r *http.Request) {
+	data := &authLoginRequest{}
+
+	if err := render.Bind(r, data); err != nil {
+		renderError(w, r, http.StatusForbidden, ErrServerForbidden, err)
+		return
+	}
+	user, err := s.authService.Login(
+		data.Email,
+		data.Password,
+	)
+	if err != nil {
+		renderError(w, r, http.StatusForbidden, ErrServerForbidden, err)
+		return
+	}
+	render.Render(w, r, &authLoginResponse{
+		User: *NewUserResponse(&user),
+	})
+}
+
+// auth/logout godoc
+// @Summary Logs user in
+// @Description Logs user in and returns token
+// @Tags auth
+// @Accept   json
+// @Produce  json
+// @Param logout_body body authLogoutRequest true "Body"
+// @Success 200 {object} authLogoutResponse
+// @Router /auth/logout [post]
+func (s *Server) authLogout(w http.ResponseWriter, r *http.Request) {
+	data := &authLogoutRequest{}
+
+	if err := render.Bind(r, data); err != nil {
+		renderError(w, r, http.StatusForbidden, ErrServerForbidden, err)
+		return
+	}
+	err := s.authService.Logout(
+		data.Email,
+		data.Token,
+	)
+	if err != nil {
+		renderError(w, r, http.StatusForbidden, ErrServerForbidden, err)
+		return
+	}
+	render.Render(w, r, &authLogoutResponse{})
 }
 
 func renderError(w http.ResponseWriter, r *http.Request, code int, message error, err error) {
