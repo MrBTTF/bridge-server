@@ -8,6 +8,9 @@ postgresql:
     username:
     password:
     database: bridge
+  primary:
+    initdb:
+      scriptsConfigMap: db-init
 
 replicaCount: 1
 

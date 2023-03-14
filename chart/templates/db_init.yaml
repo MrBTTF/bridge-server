@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: db-init
+data: 
+  db_init.sql:   |-
+      {{- .Values.db_init | nindent 4 }}
