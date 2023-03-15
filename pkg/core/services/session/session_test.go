@@ -1,6 +1,7 @@
 package session
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/MrBTTF/gophercises/deck"
@@ -11,6 +12,10 @@ import (
 const (
 	player_id = "test_player"
 	room_id   = "test_room"
+)
+
+var (
+	NotFoundError = errors.New("Not found")
 )
 
 type MockSessionRepository struct {
@@ -25,7 +30,11 @@ func NewMockSessionRepository() *MockSessionRepository {
 }
 
 func (m *MockSessionRepository) Get(session_id string) (core.Session, error) {
-	return m.sessions[session_id], nil
+	v, ok := m.sessions[session_id]
+	if !ok {
+		return core.Session{}, NotFoundError
+	}
+	return v, nil
 }
 
 func (m *MockSessionRepository) Store(session *core.Session) error {
@@ -45,7 +54,11 @@ func NewMockPlayerRepository() *MockPlayerRepository {
 }
 
 func (m *MockPlayerRepository) Get(player_id string) (core.Player, error) {
-	return m.players[player_id], nil
+	v, ok := m.players[player_id]
+	if !ok {
+		return core.Player{}, NotFoundError
+	}
+	return v, nil
 }
 
 func (m *MockPlayerRepository) Store(player *core.Player) error {
@@ -53,10 +66,39 @@ func (m *MockPlayerRepository) Store(player *core.Player) error {
 	return nil
 }
 
+type MockUserRepository struct {
+	users map[string]core.User
+}
+
+func NewMockUserRepository() *MockUserRepository {
+
+	return &MockUserRepository{
+		users: map[string]core.User{},
+	}
+}
+
+func (m *MockUserRepository) Get(user_id string) (core.User, error) {
+	v, ok := m.users[user_id]
+	if !ok {
+		return core.User{}, NotFoundError
+	}
+	return v, nil
+}
+
+func (m *MockUserRepository) GetByEmail(email string) (core.User, error) {
+	return m.users[email], nil
+}
+
+func (m *MockUserRepository) Store(player *core.User) error {
+	m.users[player.Id] = *player
+	return nil
+}
+
 func TestSession(t *testing.T) {
 	sessions := NewMockSessionRepository()
 	players := NewMockPlayerRepository()
-	err := players.Store(&core.Player{
+	users := NewMockUserRepository()
+	err := users.Store(&core.User{
 		Id: player_id,
 	})
 	if err != nil {
@@ -67,7 +109,7 @@ func TestSession(t *testing.T) {
 	tableCard := core.NewCard(deck.Diamond, deck.Queen)
 	playerCard := core.NewCard(deck.Heart, deck.Queen)
 	setLastCards(_deck, tableCard, playerCard)
-	session_service := New(sessions, players)
+	session_service := New(sessions, players, users)
 	session_id, err := session_service.Create([]string{player_id}, _deck)
 	if err != nil {
 		panic(err)

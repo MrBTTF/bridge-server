@@ -57,18 +57,18 @@ type authLogoutRequest struct {
 }
 
 type PlayerResponse struct {
-	Id        string
-	Name      string
-	Cards     []string
-	State     string
+	Id        string `json:"id" example:"string"`
+	Name      string `json:"name" example:"string"`
+	Cards     []string `json:"players" example:"string"`
+	State     string  `json:"state" example:"string"`
 	SessionId string
 }
 
 type SessionResponse struct {
-	Id            string
-	Players       []string
-	Deck          []string
-	Table         []string
+	Id            string    `json:"id" example:"string"`
+	Players       []string `json:"players" example:"string"`
+	Deck          []string `json:"deck" example:"string"`
+	Table         []string `json:"table" example:"string"`
 	CurrentPlayer PlayerResponse
 }
 
@@ -103,9 +103,9 @@ type authRegisterResponse struct {
 }
 
 type UserResponse struct {
-	Id       string
-	Nickname string
-	Token    string
+	Id       string `json:"id" example:"string"`
+	Nickname string `json:"nickname" example:"string"`
+	Token    string `json:"token" example:"string"`
 }
 
 func NewUserResponse(user *core.User) *UserResponse {
@@ -129,7 +129,7 @@ type ErrResponse struct {
 	Code int `json:"-"`
 
 	Success bool   `json:"success" example:"false"`
-	Message string `json:"message,omitempty"`
+	Message string `json:"message,omitempty" example:"Error occured"`
 }
 
 func (er ErrResponse) Render(w http.ResponseWriter, r *http.Request) error {

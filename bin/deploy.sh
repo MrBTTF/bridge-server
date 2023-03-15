@@ -4,10 +4,10 @@ set -Eeuo pipefail
 
 export $(cat prod/.env | xargs)
 
-    # echo Building
-    # ./bin/build.sh
-    # echo Building Docker image
-    # docker build --tag fuji:5000/bridge-server:latest .
+echo Building
+./bin/build.sh
+echo Building Docker image
+docker build --tag fuji:5000/bridge-server:latest .
 echo Pushing Docker image
 version=$(IFS=. read -r a b c<<<"$(cat version.txt)";echo "$a.$b.$((c+1))")
 echo $version > version.txt

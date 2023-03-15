@@ -4,8 +4,8 @@ import (
 	"os"
 
 	"github.com/mrbttf/bridge-server/pkg/config"
-	"github.com/mrbttf/bridge-server/pkg/core/services/session"
 	"github.com/mrbttf/bridge-server/pkg/core/services/auth"
+	"github.com/mrbttf/bridge-server/pkg/core/services/session"
 	"github.com/mrbttf/bridge-server/pkg/db"
 	"github.com/mrbttf/bridge-server/pkg/log"
 	"github.com/mrbttf/bridge-server/pkg/repositories"
@@ -30,12 +30,13 @@ func main() {
 
 	repository := repositories.NewSessionRepository(postgresDB)
 	playerRepository := repositories.NewPlayerRepository(postgresDB)
+	userRepository := repositories.NewUserRepository(postgresDB)
 	serviceSession := session.New(
 		repository,
 		playerRepository,
+		userRepository,
 	)
-	userRepository := repositories.NewUserRepository(postgresDB)
-	authService:= auth.New(
+	authService := auth.New(
 		userRepository,
 	)
 	server := server.New(serviceSession, authService, config)

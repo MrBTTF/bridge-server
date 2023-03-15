@@ -18,13 +18,18 @@ var (
 type SessionService struct {
 	sessions core.SessionRepository
 	players  core.PlayerRepository
-	//user  core.UserRepository
+	users    core.UserRepository
 }
 
-func New(sessions core.SessionRepository, players core.PlayerRepository) *SessionService {
+func New(
+	sessions core.SessionRepository,
+	players core.PlayerRepository,
+	users core.UserRepository,
+) *SessionService {
 	return &SessionService{
 		sessions: sessions,
 		players:  players,
+		users:    users,
 	}
 }
 
@@ -45,25 +50,39 @@ func (s *SessionService) Create(player_ids []string, _deck []deck.Card) (string,
 
 	session_id := uuid.New().String()
 
-	// get users nicknames
 	players := make([]core.Player, 0, len(player_ids))
 
 	first_player_id := player_ids[0]
+	first_user, err := s.users.Get(first_player_id)
+	if err != nil {
+		return "", fmt.Errorf("Unable to create session: %w", err)
+	}
+
 	_deck, cards := popDeck(_deck, 5)
 	players = append(players, core.Player{
 		Id:        first_player_id,
 		Cards:     cards,
-		Nickname:  "",
+		Nickname:  first_user.Nickname,
 		State:     state.StateWaitForTurn,
 		SessionId: session_id,
 	})
+	players[0].State, err = players[0].State.OnNextTurn(table[0])
+	if err != nil {
+		return "", fmt.Errorf("Unable to create session: %w", err)
+	}
 
 	for _, id := range player_ids[1:] {
+
+		user, err := s.users.Get(id)
+		if err != nil {
+			return "", fmt.Errorf("Unable to create session: %w", err)
+		}
+
 		_deck, cards = popDeck(_deck, 4)
 		players = append(players, core.Player{
 			Id:        id,
 			Cards:     cards,
-			Nickname:  "",
+			Nickname:  user.Nickname,
 			State:     state.StateWaitForTurn,
 			SessionId: session_id,
 		})
@@ -76,7 +95,7 @@ func (s *SessionService) Create(player_ids []string, _deck []deck.Card) (string,
 		Table:         table,
 		CurrentPlayer: player_ids[0],
 	}
-	err := s.sessions.Store(session)
+	err = s.sessions.Store(session)
 	if err != nil {
 		return "", fmt.Errorf("Unable to create session: %w", err)
 	}

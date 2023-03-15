@@ -61,7 +61,7 @@ func (as *AuthService) Register(email string, password string, nickname string) 
 func (as *AuthService) Logout(email, token string) error {
 	user, err := as.user.GetByEmail(email)
 	if err != nil {
-		return fmt.Errorf("Unable to logout for email: %s: %w", err)
+		return fmt.Errorf("Unable to logout for email: %s: %w", email, err)
 	}
 	if user.Token != getHash(token) {
 		return fmt.Errorf("Unable to logout for email: %s: %w", email, TokenInvalidError)
@@ -69,7 +69,7 @@ func (as *AuthService) Logout(email, token string) error {
 	user.Token = ""
 	err = as.user.Store(&user)
 	if err != nil {
-		return fmt.Errorf("Unable to logout for email: %s: %w", err)
+		return fmt.Errorf("Unable to logout for email: %s: %w", email, err)
 	}
 	return nil
 }

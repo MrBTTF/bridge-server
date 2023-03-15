@@ -76,7 +76,9 @@ func (s *Server) health(w http.ResponseWriter, r *http.Request) {
 // @Produce  json
 // @Param session_id path string true "ID of session"
 // @Param token query string true "token"
+// @Param user_id query string true "user_id"
 // @Success 200 {object} sessionGetResponse
+// @Failure 500 {object} ErrResponse
 // @Router /session/{session_id} [get]
 func (s *Server) sessionGet(w http.ResponseWriter, r *http.Request) {
 	sessionId := chi.URLParam(r, "session_id")
@@ -110,8 +112,7 @@ func (s *Server) sessionGet(w http.ResponseWriter, r *http.Request) {
 // @Produce  json
 // @Param session_body body sessionCreateRequest true "Ids of players in the session"
 // @Success 200 {object} sessionCreateResponse
-// // @Failure 400 {object} failureResponse
-// // @Failure 500 {object} failureResponse
+// @Failure 500 {object} ErrResponse
 // @Router /session/create [post]
 func (s *Server) sessionCreate(w http.ResponseWriter, r *http.Request) {
 	data := &sessionCreateRequest{}
@@ -138,6 +139,7 @@ func (s *Server) sessionCreate(w http.ResponseWriter, r *http.Request) {
 // @Produce  json
 // @Param body body sessionLayRequest true "Body"
 // @Success 200 {object} DefaultResponse
+// @Failure 500 {object} ErrResponse
 // @Router /session/lay [post]
 func (s *Server) sessionLay(w http.ResponseWriter, r *http.Request) {
 	data := &sessionLayRequest{}
@@ -163,6 +165,7 @@ func (s *Server) sessionLay(w http.ResponseWriter, r *http.Request) {
 // @Produce  json
 // @Param body body sessionPullRequest true "Body"
 // @Success 200 {object} DefaultResponse
+// @Failure 500 {object} ErrResponse
 // @Router /session/pull [post]
 func (s *Server) sessionPull(w http.ResponseWriter, r *http.Request) {
 	data := &sessionPullRequest{}
@@ -187,6 +190,7 @@ func (s *Server) sessionPull(w http.ResponseWriter, r *http.Request) {
 // @Produce  json
 // @Param body body sessionNextTurnRequest true "Body"
 // @Success 200 {object} DefaultResponse
+// @Failure 500 {object} ErrResponse
 // @Router /session/nextTurn [post]
 func (s *Server) sessionNextTurn(w http.ResponseWriter, r *http.Request) {
 	data := &sessionNextTurnRequest{}
@@ -211,6 +215,7 @@ func (s *Server) sessionNextTurn(w http.ResponseWriter, r *http.Request) {
 // @Produce  json
 // @Param register_body body authRegisterRequest true "Body"
 // @Success 200 {object} authRegisterResponse
+// @Failure 500 {object} ErrResponse
 // @Router /auth/register [post]
 func (s *Server) authRegister(w http.ResponseWriter, r *http.Request) {
 	data := &authRegisterRequest{}
@@ -239,6 +244,7 @@ func (s *Server) authRegister(w http.ResponseWriter, r *http.Request) {
 // @Produce  json
 // @Param login_body body authLoginRequest true "Body"
 // @Success 200 {object} authLoginResponse
+// @Failure 500 {object} ErrResponse
 // @Router /auth/login [post]
 func (s *Server) authLogin(w http.ResponseWriter, r *http.Request) {
 	data := &authLoginRequest{}
@@ -268,6 +274,7 @@ func (s *Server) authLogin(w http.ResponseWriter, r *http.Request) {
 // @Produce  json
 // @Param logout_body body authLogoutRequest true "Body"
 // @Success 200 {object} authLogoutResponse
+// @Failure 500 {object} ErrResponse
 // @Router /auth/logout [post]
 func (s *Server) authLogout(w http.ResponseWriter, r *http.Request) {
 	data := &authLogoutRequest{}
