@@ -23,7 +23,7 @@ func NewDeck() []deck.Card {
 type User struct {
 	Id       string
 	Email    string
-	Password    string
+	Password string
 	Nickname string
 	Token    string
 }
@@ -51,4 +51,11 @@ func (s Session) HasPlayer(player_id string) bool {
 		}
 	}
 	return false
+}
+
+type Room struct {
+	Id    string
+	Host  string
+	Users []string
+	Open  bool
 }

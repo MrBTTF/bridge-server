@@ -7,6 +7,7 @@ import (
 	"github.com/MrBTTF/gophercises/deck"
 	"github.com/mrbttf/bridge-server/pkg/core"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/exp/maps"
 )
 
 const (
@@ -89,17 +90,58 @@ func (m *MockUserRepository) GetByEmail(email string) (core.User, error) {
 	return m.users[email], nil
 }
 
+func (m *MockUserRepository) GetForRoom(string) ([]core.User, error) {
+	return maps.Values(m.users), nil
+}
+
 func (m *MockUserRepository) Store(player *core.User) error {
 	m.users[player.Id] = *player
 	return nil
+}
+
+type MockRoomRepository struct {
+	rooms map[string]core.Room
+}
+
+func NewMockRoomRepository() *MockRoomRepository {
+	return &MockRoomRepository{
+		rooms: map[string]core.Room{},
+	}
+}
+
+func (m *MockRoomRepository) Get(room_id string) (core.Room, error) {
+	v, ok := m.rooms[room_id]
+	if !ok {
+		return core.Room{}, NotFoundError
+	}
+	return v, nil
+}
+
+func (m *MockRoomRepository) Store(room *core.Room) error {
+	m.rooms[room.Id] = *room
+	return nil
+}
+
+func (m *MockRoomRepository) List(bool) ([]core.Room, error) {
+	return maps.Values(m.rooms), nil
 }
 
 func TestSession(t *testing.T) {
 	sessions := NewMockSessionRepository()
 	players := NewMockPlayerRepository()
 	users := NewMockUserRepository()
+	rooms := NewMockRoomRepository()
 	err := users.Store(&core.User{
 		Id: player_id,
+	})
+	if err != nil {
+		panic(err)
+	}
+	err = rooms.Store(&core.Room{
+		Id:    room_id,
+		Host:  player_id,
+		Users: []string{player_id},
+		Open:  true,
 	})
 	if err != nil {
 		panic(err)
@@ -109,8 +151,8 @@ func TestSession(t *testing.T) {
 	tableCard := core.NewCard(deck.Diamond, deck.Queen)
 	playerCard := core.NewCard(deck.Heart, deck.Queen)
 	setLastCards(_deck, tableCard, playerCard)
-	session_service := New(sessions, players, users)
-	session_id, err := session_service.Create([]string{player_id}, _deck)
+	session_service := New(sessions, players, users, rooms)
+	session_id, err := session_service.Create(room_id, _deck)
 	if err != nil {
 		panic(err)
 	}

@@ -23,16 +23,21 @@ var (
 
 	ErrServerSessionIdInvalid  = errors.New("session_id parameter is invalid")
 	ErrServerSessionIdNotFound = errors.New("Session ID not found")
+
+	ErrServerRoomIdInvalid  = errors.New("room_id parameter is invalid")
+	ErrServerRoomIdNotFound = errors.New("Room ID not found")
 )
 
 type Server struct {
 	router         *chi.Mux
 	sessionService core.SessionServicePort
+	roomService    core.RoomServicePort
 	authService    core.AuthServicePort
 }
 
 func New(
 	sessionService core.SessionServicePort,
+	roomService core.RoomServicePort,
 	authService core.AuthServicePort,
 	config config.Config,
 ) *Server {
@@ -40,6 +45,7 @@ func New(
 		router:         chi.NewRouter(),
 		sessionService: sessionService,
 		authService:    authService,
+		roomService:    roomService,
 	}
 
 	s.router.Use(render.SetContentType(render.ContentTypeJSON))
@@ -49,6 +55,11 @@ func New(
 	s.router.With(s.AuthMiddleware).Post("/session/lay", s.sessionLay)
 	s.router.With(s.AuthMiddleware).Post("/session/pull", s.sessionPull)
 	s.router.With(s.AuthMiddleware).Post("/session/nextTurn", s.sessionNextTurn)
+
+	s.router.With(s.AuthMiddleware).Get("/room/{room_id}", s.roomGet)
+	s.router.With(s.AuthMiddleware).Post("/room/create", s.roomCreate)
+	s.router.With(s.AuthMiddleware).Post("/room/list", s.roomList)
+	s.router.With(s.AuthMiddleware).Post("/room/join", s.roomJoin)
 
 	s.router.Post("/auth/register", s.authRegister)
 	s.router.Post("/auth/login", s.authLogin)
@@ -110,7 +121,7 @@ func (s *Server) sessionGet(w http.ResponseWriter, r *http.Request) {
 // @Tags session
 // @Accept   json
 // @Produce  json
-// @Param session_body body sessionCreateRequest true "Ids of players in the session"
+// @Param session_body body sessionCreateRequest true "body"
 // @Success 200 {object} sessionCreateResponse
 // @Failure 500 {object} ErrResponse
 // @Router /session/create [post]
@@ -121,7 +132,13 @@ func (s *Server) sessionCreate(w http.ResponseWriter, r *http.Request) {
 		renderError(w, r, http.StatusBadRequest, ErrServerBadRequest, err)
 		return
 	}
-	session_id, err := s.sessionService.Create(data.PlayerIds, nil)
+	session_id, err := s.sessionService.Create(data.RoomId, nil)
+	if err != nil {
+		renderError(w, r, http.StatusInternalServerError, ErrServerInternal, err)
+		return
+	}
+
+	err = s.roomService.Close(data.RoomId)
 	if err != nil {
 		renderError(w, r, http.StatusInternalServerError, ErrServerInternal, err)
 		return
@@ -205,6 +222,130 @@ func (s *Server) sessionNextTurn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	render.Render(w, r, &DefaultResponse{})
+}
+
+// room/ godoc
+// @Summary Get room
+// @Description Gets room for room_id
+// @Tags room
+// @Produce  json
+// @Param room_id path string true "ID of room"
+// @Param token query string true "token"
+// @Param user_id query string true "user_id"
+// @Success 200 {object} roomGetResponse
+// @Failure 500 {object} ErrResponse
+// @Router /room/{room_id} [get]
+func (s *Server) roomGet(w http.ResponseWriter, r *http.Request) {
+	roomId := chi.URLParam(r, "room_id")
+	if roomId == "" {
+		renderError(w, r, http.StatusBadRequest, ErrServerRoomIdInvalid, ErrServerRoomIdInvalid)
+		return
+	}
+
+	room, err := s.roomService.Get(roomId)
+	if err != nil {
+		renderError(w, r, http.StatusNotFound, ErrServerRoomIdNotFound, err)
+		return
+	}
+	users, err := s.roomService.GetUsers(room.Id)
+	if err != nil {
+		renderError(w, r, http.StatusNotFound, ErrServerRoomIdNotFound, err)
+		return
+	}
+	response := NewRoomResponse(&room, &users[0], users)
+
+	render.Render(w, r, &roomGetResponse{
+		Room: *response,
+	})
+}
+
+// room/create godoc
+// @Summary Creates room
+// @Description Creates a room and returns its id
+// @Tags room
+// @Accept   json
+// @Produce  json
+// @Param room_body body roomCreateRequest true "body"
+// @Success 200 {object} roomCreateResponse
+// @Failure 500 {object} ErrResponse
+// @Router /room/create [post]
+func (s *Server) roomCreate(w http.ResponseWriter, r *http.Request) {
+	data := &roomCreateRequest{}
+
+	if err := render.Bind(r, data); err != nil {
+		renderError(w, r, http.StatusBadRequest, ErrServerBadRequest, err)
+		return
+	}
+	room_id, err := s.roomService.Create(data.HostId)
+	if err != nil {
+		renderError(w, r, http.StatusInternalServerError, ErrServerInternal, err)
+		return
+	}
+	render.Render(w, r, &roomCreateResponse{
+		RoomId: room_id,
+	})
+}
+
+// room/join godoc
+// @Summary Joins a user to room
+// @Description Joins a user to room by user id
+// @Tags room
+// @Accept   json
+// @Produce  json
+// @Param body body roomJoinRequest true "Body"
+// @Success 200 {object} DefaultResponse
+// @Failure 500 {object} ErrResponse
+// @Router /room/join [post]
+func (s *Server) roomJoin(w http.ResponseWriter, r *http.Request) {
+	data := &roomJoinRequest{}
+
+	if err := render.Bind(r, data); err != nil {
+		renderError(w, r, http.StatusBadRequest, ErrServerBadRequest, err)
+		return
+	}
+	err := s.roomService.Join(data.RoomId, data.UserId)
+	if err != nil {
+		renderError(w, r, http.StatusInternalServerError, err, err)
+		return
+	}
+	render.Render(w, r, &DefaultResponse{})
+}
+
+// room/list godoc
+// @Summary List rooms
+// @Description List open or closed rooms
+// @Tags room
+// @Accept   json
+// @Produce  json
+// @Param body body roomListRequest true "Body"
+// @Success 200 {object} roomListResponse
+// @Failure 500 {object} ErrResponse
+// @Router /room/list [post]
+func (s *Server) roomList(w http.ResponseWriter, r *http.Request) {
+	data := &roomListRequest{}
+
+	if err := render.Bind(r, data); err != nil {
+		renderError(w, r, http.StatusBadRequest, ErrServerBadRequest, err)
+		return
+	}
+	rooms, err := s.roomService.List(data.Open)
+	if err != nil {
+		renderError(w, r, http.StatusInternalServerError, err, err)
+		return
+	}
+	roomUsers := make([]RoomUser, 0, len(rooms))
+	for _, room := range rooms {
+		users, err := s.roomService.GetUsers(room.Id)
+		if err != nil {
+			renderError(w, r, http.StatusNotFound, ErrServerRoomIdNotFound, err)
+			return
+		}
+		roomUsers = append(roomUsers, RoomUser{
+			room:  room,
+			users: users,
+		})
+	}
+	render.Render(w, r, NewRoomListResponse(roomUsers))
 }
 
 // auth/register godoc

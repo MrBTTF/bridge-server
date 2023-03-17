@@ -19,17 +19,20 @@ type SessionService struct {
 	sessions core.SessionRepository
 	players  core.PlayerRepository
 	users    core.UserRepository
+	rooms    core.RoomRepository
 }
 
 func New(
 	sessions core.SessionRepository,
 	players core.PlayerRepository,
 	users core.UserRepository,
+	rooms core.RoomRepository,
 ) *SessionService {
 	return &SessionService{
 		sessions: sessions,
 		players:  players,
 		users:    users,
+		rooms:    rooms,
 	}
 }
 
@@ -41,7 +44,7 @@ func (s *SessionService) GetPlayer(sessionplayerId string) (core.Player, error) 
 	return s.players.Get(sessionplayerId)
 }
 
-func (s *SessionService) Create(player_ids []string, _deck []deck.Card) (string, error) {
+func (s *SessionService) Create(room_id string, _deck []deck.Card) (string, error) {
 	if _deck == nil {
 		_deck = core.NewDeck()
 	}
@@ -50,9 +53,14 @@ func (s *SessionService) Create(player_ids []string, _deck []deck.Card) (string,
 
 	session_id := uuid.New().String()
 
-	players := make([]core.Player, 0, len(player_ids))
+	room, err := s.rooms.Get(room_id)
+	if err != nil {
+		return "", fmt.Errorf("Unable to create session: %w", err)
+	}
 
-	first_player_id := player_ids[0]
+	players := make([]core.Player, 0, len(room.Users))
+
+	first_player_id := room.Users[0]
 	first_user, err := s.users.Get(first_player_id)
 	if err != nil {
 		return "", fmt.Errorf("Unable to create session: %w", err)
@@ -71,7 +79,7 @@ func (s *SessionService) Create(player_ids []string, _deck []deck.Card) (string,
 		return "", fmt.Errorf("Unable to create session: %w", err)
 	}
 
-	for _, id := range player_ids[1:] {
+	for _, id := range room.Users[1:] {
 
 		user, err := s.users.Get(id)
 		if err != nil {
@@ -90,10 +98,10 @@ func (s *SessionService) Create(player_ids []string, _deck []deck.Card) (string,
 
 	session := &core.Session{
 		Id:            session_id,
-		Players:       player_ids,
+		Players:       room.Users,
 		Deck:          _deck,
 		Table:         table,
-		CurrentPlayer: player_ids[0],
+		CurrentPlayer: room.Users[0],
 	}
 	err = s.sessions.Store(session)
 	if err != nil {

@@ -53,9 +53,40 @@ func (ur *UserRepository) GetByEmail(user_id string) (core.User, error) {
 		&user.Token,
 	)
 	if err != nil {
-		return core.User{}, fmt.Errorf("Unable to get user ny email for id %s: %w", user_id, err)
+		return core.User{}, fmt.Errorf("Unable to get user by email for id %s: %w", user_id, err)
 	}
 	return user, nil
+}
+
+const SelectUsersForRoom = `
+SELECT user_id, email, password, nickname, token
+FROM users
+JOIN rooms ON user_id = any(rooms.user_ids)
+WHERE rooms.room_id = $1
+`
+
+func (ur *UserRepository) GetForRoom(room_id string) ([]core.User, error) {
+	rows, err := ur.db.Query(SelectUsersForRoom, room_id)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to get users for room id %s: %w", room_id, err)
+	}
+	defer rows.Close()
+
+	var users []core.User
+	for rows.Next() {
+		var user core.User
+		if err := rows.Scan(
+			&user.Id,
+			&user.Email,
+			&user.Password,
+			&user.Nickname,
+			&user.Token,
+		); err != nil {
+			return nil, fmt.Errorf("Unable to get users for room id %s: %w", room_id, err)
+		}
+		users = append(users, user)
+	}
+	return users, nil
 }
 
 const UpsertUser = `
@@ -72,12 +103,6 @@ SET
 `
 
 func (ur *UserRepository) Store(user *core.User) error {
-	println(user.Id,
-		user.Email,
-		user.Password,
-		user.Nickname,
-		user.Token,
-	)
 	_, err := ur.db.Exec(UpsertUser,
 		user.Id,
 		user.Email,

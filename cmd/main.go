@@ -5,6 +5,7 @@ import (
 
 	"github.com/mrbttf/bridge-server/pkg/config"
 	"github.com/mrbttf/bridge-server/pkg/core/services/auth"
+	"github.com/mrbttf/bridge-server/pkg/core/services/room"
 	"github.com/mrbttf/bridge-server/pkg/core/services/session"
 	"github.com/mrbttf/bridge-server/pkg/db"
 	"github.com/mrbttf/bridge-server/pkg/log"
@@ -31,15 +32,21 @@ func main() {
 	repository := repositories.NewSessionRepository(postgresDB)
 	playerRepository := repositories.NewPlayerRepository(postgresDB)
 	userRepository := repositories.NewUserRepository(postgresDB)
+	roomRepository := repositories.NewRoomRepository(postgresDB)
 	serviceSession := session.New(
 		repository,
 		playerRepository,
+		userRepository,
+		roomRepository,
+	)
+	roomService := room.New(
+		roomRepository,
 		userRepository,
 	)
 	authService := auth.New(
 		userRepository,
 	)
-	server := server.New(serviceSession, authService, config)
+	server := server.New(serviceSession, roomService, authService, config)
 	err = server.Run(":" + port)
 	if err != nil {
 		log.Fatal(err)
