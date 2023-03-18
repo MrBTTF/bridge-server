@@ -96,3 +96,17 @@ func (rr *RoomRepository) Store(room *core.Room) error {
 
 	return nil
 }
+
+const DeleteRoom = `
+DELETE FROM rooms
+WHERE room_id = $1
+`
+
+func (rr *RoomRepository) Delete(room_id string) error {
+	_, err := rr.db.Exec(DeleteRoom, room_id)
+	if err != nil {
+		return fmt.Errorf("Unable to delete room for id %s: %w", room_id, err)
+	}
+
+	return nil
+}

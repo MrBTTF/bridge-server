@@ -1,6 +1,8 @@
-DROP TABLE sessions CASCADE;
-DROP TABLE players CASCADE;
-DROP TABLE users CASCADE;
+DROP TABLE IF EXISTS sessions CASCADE;
+DROP TABLE IF EXISTS players CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS rooms CASCADE;
+
 
 CREATE TABLE IF NOT EXISTS sessions (
     session_id text PRIMARY KEY,
@@ -40,18 +42,22 @@ CREATE TABLE IF NOT EXISTS rooms (
 );
 
 ALTER TABLE sessions
-    ADD FOREIGN KEY (current_player) REFERENCES users (user_id);
+    ADD FOREIGN KEY (current_player) REFERENCES users (user_id) ON DELETE CASCADE;
     
 ALTER TABLE players
     ADD FOREIGN KEY (session_id) 
-        REFERENCES sessions (session_id),
+        REFERENCES sessions (session_id) ON DELETE CASCADE,
     ADD FOREIGN KEY (user_id) 
-        REFERENCES users (user_id);
+        REFERENCES users (user_id) ON DELETE CASCADE;
 
 ALTER TABLE rooms
-    ADD FOREIGN KEY (host_id) REFERENCES users (user_id);
-    
+    ADD FOREIGN KEY (host_id) REFERENCES users (user_id) ON DELETE CASCADE; 
+
+GRANT ALL ON ALL TABLES IN SCHEMA public TO bridge;
+
 
 INSERT INTO users (user_id, email, password, nickname, token)
-values ('6e3f9165-3daf-4fdc-9b52-12e6fdd810c1', 'test1@bridge.test', '482c811da5d5b4bc6d497ffa98491e38', 'Test User', ''),
+values ('6e3f9165-3daf-4fdc-9b52-12e6fdd810c1', 'test1@bridge.test', '42f749ade7f9e195bf475f37a44cafcb', 'Test User', ''),
        ('a1980803-7eb9-477a-a860-9a652adfa30d', 'zalizniak@zalizniak', 'ac0ddf9e65d57b6a56b2453386cd5db5', 'zalizniak', '');
+
+

@@ -63,7 +63,22 @@ func (sp *SessionRepository) Store(session *core.Session) error {
 		pq.Array(_deck), pq.Array(table), session.CurrentPlayer,
 	)
 	if err != nil {
-		return err
+		return fmt.Errorf("Unable to store session for id %s: %w", session.Id, err)
+
+	}
+
+	return nil
+}
+
+const DeleteSession = `
+DELETE FROM sessions
+WHERE session_id = $1
+`
+
+func (sp *SessionRepository) Delete(session_id string) error {
+	_, err := sp.db.Exec(DeleteSession, session_id)
+	if err != nil {
+		return fmt.Errorf("Unable to delete session for id %s: %w", session_id, err)
 	}
 
 	return nil

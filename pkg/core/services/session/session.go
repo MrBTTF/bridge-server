@@ -229,6 +229,14 @@ func (s *SessionService) NextTurn(session_id, player_id string) error {
 	return nil
 }
 
+func (s *SessionService) DeleteSession(session_id string) error {
+	err := s.sessions.Delete(session_id)
+	if err != nil {
+		return fmt.Errorf("Unable to delete session %s: %w", session_id, err)
+	}
+	return nil
+}
+
 func layCardOnTable(table []deck.Card, card deck.Card) error {
 	if len(table) == 0 {
 		return nil

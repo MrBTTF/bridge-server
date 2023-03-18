@@ -11,7 +11,7 @@ import (
 
 var (
 	ErrServerUserIdNotFound = errors.New("user_id not found")
-	ErrServerTokenNotFound = errors.New("token not found")
+	ErrServerTokenNotFound  = errors.New("token not found")
 )
 
 func (s *Server) AuthMiddleware(next http.Handler) http.Handler {
@@ -25,7 +25,7 @@ func (s *Server) AuthMiddleware(next http.Handler) http.Handler {
 				renderError(w, r, http.StatusBadRequest, ErrServerForbidden, err)
 				return
 			}
-		}  else {
+		} else {
 			data, err = getBodyParams(r)
 			if err != nil {
 				renderError(w, r, http.StatusBadRequest, ErrServerForbidden, err)
@@ -56,7 +56,7 @@ func getQueryParams(r *http.Request) (*AuthRequest, error) {
 	}
 	return &AuthRequest{
 		UserId: userId[0],
-		Token: token[0],
+		Token:  token[0],
 	}, nil
 }
 func getBodyParams(r *http.Request) (*AuthRequest, error) {

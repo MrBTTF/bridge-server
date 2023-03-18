@@ -55,11 +55,13 @@ func New(
 	s.router.With(s.AuthMiddleware).Post("/session/lay", s.sessionLay)
 	s.router.With(s.AuthMiddleware).Post("/session/pull", s.sessionPull)
 	s.router.With(s.AuthMiddleware).Post("/session/nextTurn", s.sessionNextTurn)
+	s.router.With(s.AuthMiddleware).Post("/session/close", s.sessionClose)
 
 	s.router.With(s.AuthMiddleware).Get("/room/{room_id}", s.roomGet)
 	s.router.With(s.AuthMiddleware).Post("/room/create", s.roomCreate)
 	s.router.With(s.AuthMiddleware).Post("/room/list", s.roomList)
 	s.router.With(s.AuthMiddleware).Post("/room/join", s.roomJoin)
+	s.router.With(s.AuthMiddleware).Post("/room/delete", s.roomDelete)
 
 	s.router.Post("/auth/register", s.authRegister)
 	s.router.Post("/auth/login", s.authLogin)
@@ -224,6 +226,31 @@ func (s *Server) sessionNextTurn(w http.ResponseWriter, r *http.Request) {
 	render.Render(w, r, &DefaultResponse{})
 }
 
+// session/close godoc
+// @Summary Closes session
+// @Description Deletes a session and its players
+// @Tags session
+// @Accept   json
+// @Produce  json
+// @Param body body sessionCloseRequest true "Body"
+// @Success 200 {object} DefaultResponse
+// @Failure 500 {object} ErrResponse
+// @Router /session/close [post]
+func (s *Server) sessionClose(w http.ResponseWriter, r *http.Request) {
+	data := &sessionCloseRequest{}
+
+	if err := render.Bind(r, data); err != nil {
+		renderError(w, r, http.StatusBadRequest, ErrServerBadRequest, err)
+		return
+	}
+	err := s.sessionService.DeleteSession(data.SessionId)
+	if err != nil {
+		renderError(w, r, http.StatusInternalServerError, err, err)
+		return
+	}
+	render.Render(w, r, &DefaultResponse{})
+}
+
 // room/ godoc
 // @Summary Get room
 // @Description Gets room for room_id
@@ -348,6 +375,33 @@ func (s *Server) roomList(w http.ResponseWriter, r *http.Request) {
 	render.Render(w, r, NewRoomListResponse(roomUsers))
 }
 
+// room/delete godoc
+// @Summary Deletes room
+// @Description Deletes room
+// @Tags room
+// @Accept   json
+// @Produce  json
+// @Param body body roomDeleteRequest true "Body"
+// @Success 200 {object} DefaultResponse
+// @Failure 500 {object} ErrResponse
+// @Router /room/delete [post]
+func (s *Server) roomDelete(w http.ResponseWriter, r *http.Request) {
+	data := &roomDeleteRequest{}
+
+	if err := render.Bind(r, data); err != nil {
+		renderError(w, r, http.StatusBadRequest, ErrServerBadRequest, err)
+		return
+	}
+	fmt.Println("roomDelete")
+	fmt.Println(data)
+	err := s.roomService.Delete(data.RoomId)
+	if err != nil {
+		renderError(w, r, http.StatusInternalServerError, err, err)
+		return
+	}
+	render.Render(w, r, &DefaultResponse{})
+}
+
 // auth/register godoc
 // @Summary Registers user
 // @Description Registers user
@@ -394,6 +448,7 @@ func (s *Server) authLogin(w http.ResponseWriter, r *http.Request) {
 		renderError(w, r, http.StatusForbidden, ErrServerForbidden, err)
 		return
 	}
+	fmt.Printf("%+v\n", data)
 	user, err := s.authService.Login(
 		data.Email,
 		data.Password,

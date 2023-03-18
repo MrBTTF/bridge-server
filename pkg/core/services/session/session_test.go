@@ -43,6 +43,11 @@ func (m *MockSessionRepository) Store(session *core.Session) error {
 	return nil
 }
 
+func (m *MockSessionRepository) Delete(session_id string) error {
+	delete(m.sessions, session_id)
+	return nil
+}
+
 type MockPlayerRepository struct {
 	players map[string]core.Player
 }
@@ -124,6 +129,11 @@ func (m *MockRoomRepository) Store(room *core.Room) error {
 
 func (m *MockRoomRepository) List(bool) ([]core.Room, error) {
 	return maps.Values(m.rooms), nil
+}
+
+func (m *MockRoomRepository) Delete(room_id string) error {
+	delete(m.rooms, room_id)
+	return nil
 }
 
 func TestSession(t *testing.T) {

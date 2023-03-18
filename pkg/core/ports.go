@@ -7,6 +7,7 @@ import "github.com/MrBTTF/gophercises/deck"
 type SessionRepository interface {
 	Get(string) (Session, error)
 	Store(*Session) error
+	Delete(string) error
 }
 
 type PlayerRepository interface {
@@ -25,6 +26,7 @@ type RoomRepository interface {
 	Get(string) (Room, error)
 	List(bool) ([]Room, error)
 	Store(*Room) error
+	Delete(string) error
 }
 
 type SessionServicePort interface {
@@ -34,6 +36,7 @@ type SessionServicePort interface {
 	Pull(string, string) error
 	Lay(string, string, Card) error
 	NextTurn(string, string) error
+	DeleteSession(string) error
 }
 
 type AuthServicePort interface {
@@ -50,4 +53,5 @@ type RoomServicePort interface {
 	Join(room_id, user_id string) error
 	List(open bool) ([]Room, error)
 	Close(room_id string) error
+	Delete(room_id string) error
 }

@@ -43,9 +43,9 @@ FROM users
 WHERE email = $1
 `
 
-func (ur *UserRepository) GetByEmail(user_id string) (core.User, error) {
+func (ur *UserRepository) GetByEmail(email string) (core.User, error) {
 	var user core.User
-	err := ur.db.QueryRow(SelectUserByEmail, user_id).Scan(
+	err := ur.db.QueryRow(SelectUserByEmail, email).Scan(
 		&user.Id,
 		&user.Email,
 		&user.Password,
@@ -53,7 +53,7 @@ func (ur *UserRepository) GetByEmail(user_id string) (core.User, error) {
 		&user.Token,
 	)
 	if err != nil {
-		return core.User{}, fmt.Errorf("Unable to get user by email for id %s: %w", user_id, err)
+		return core.User{}, fmt.Errorf("Unable to get user by email %s: %w", email, err)
 	}
 	return user, nil
 }

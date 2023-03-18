@@ -37,6 +37,11 @@ type sessionNextTurnRequest struct {
 	AuthRequest
 }
 
+type sessionCloseRequest struct {
+	SessionId string `json:"session_id" example:"string"`
+	AuthRequest
+}
+
 type authRegisterRequest struct {
 	Email    string `json:"email" example:"string"`
 	Password string `json:"password" example:"string"`
@@ -74,6 +79,11 @@ type roomJoinRequest struct {
 
 type roomListRequest struct {
 	Open bool `json:"open" example:true`
+	AuthRequest
+}
+
+type roomDeleteRequest struct {
+	RoomId string `json:"room_id" example:"string"`
 	AuthRequest
 }
 

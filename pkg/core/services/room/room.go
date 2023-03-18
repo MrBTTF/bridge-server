@@ -72,3 +72,7 @@ func (rs *RoomService) Close(room_id string) error {
 	}
 	return nil
 }
+
+func (rs *RoomService) Delete(room_id string) error {
+	return rs.rooms.Delete(room_id)
+}
