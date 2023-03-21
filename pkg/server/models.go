@@ -18,6 +18,11 @@ type sessionCreateRequest struct {
 	AuthRequest
 }
 
+type sessionGetByUserRequest struct {
+	UserId string `json:"user_id" example:"string"`
+	AuthRequest
+}
+
 type sessionLayRequest struct {
 	SessionId string `json:"session_id" example:"string"`
 	PlayerId  string `json:"player_id" example:"string"`
@@ -128,9 +133,20 @@ type sessionGetResponse struct {
 	DefaultResponse
 }
 
+
+type sessionGetByUserResponse struct {
+	SessionId string `json:"session_id" example:"string"`
+	DefaultResponse
+}
+
 type sessionCreateResponse struct {
 	SessionID string `json:"session_id" example:"string"`
 	DefaultResponse
+}
+
+type sessionNoSessionErrorResponse struct {
+	Success bool   `json:"success" example:"false"`
+	Msg     string `json:"message" example:"User has no session"`
 }
 
 type authRegisterResponse struct {

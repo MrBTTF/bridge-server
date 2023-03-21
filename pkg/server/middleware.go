@@ -10,7 +10,6 @@ import (
 )
 
 var (
-	ErrServerUserIdNotFound = errors.New("user_id not found")
 	ErrServerTokenNotFound  = errors.New("token not found")
 )
 

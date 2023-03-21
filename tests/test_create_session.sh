@@ -74,6 +74,21 @@ fi
 
 response=$(curl --header "Content-Type: application/json" \
   --request POST \
+  --data "{\"user_id\":\"$user_id2\", \"token\":\"$token2\"}" \
+  $API_URL/session/getByUser)
+user2_session_id=$( jq -r  '.session_id' <<< "${response}" ) 
+success=$( jq -r  '.success' <<< "${response}" ) 
+if [[ "$success" == "false" ]]; then
+  exit 1
+fi
+
+if [[ "$user2_session_id" != "$session_id" ]]; then
+  exit 1
+fi
+
+
+response=$(curl --header "Content-Type: application/json" \
+  --request POST \
   --data "{\"session_id\":\"$session_id\", \"user_id\":\"$user_id1\", \"token\":\"$token1\"}" \
   $API_URL/session/close)
 if [[ "$success" == "false" ]]; then

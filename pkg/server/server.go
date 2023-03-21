@@ -26,6 +26,10 @@ var (
 
 	ErrServerRoomIdInvalid  = errors.New("room_id parameter is invalid")
 	ErrServerRoomIdNotFound = errors.New("Room ID not found")
+
+	ErrServerUserIdInvalid  = errors.New("user_id parameter is invalid")
+	ErrServerUserIdNotFound = errors.New("User ID not found")
+	ErrServerUserNoSession  = errors.New("User has no session")
 )
 
 type Server struct {
@@ -51,6 +55,7 @@ func New(
 	s.router.Use(render.SetContentType(render.ContentTypeJSON))
 
 	s.router.With(s.AuthMiddleware).Get("/session/{session_id}", s.sessionGet)
+	s.router.With(s.AuthMiddleware).Post("/session/getByUser", s.sessionGetByUser)
 	s.router.With(s.AuthMiddleware).Post("/session/create", s.sessionCreate)
 	s.router.With(s.AuthMiddleware).Post("/session/lay", s.sessionLay)
 	s.router.With(s.AuthMiddleware).Post("/session/pull", s.sessionPull)
@@ -114,6 +119,40 @@ func (s *Server) sessionGet(w http.ResponseWriter, r *http.Request) {
 
 	render.Render(w, r, &sessionGetResponse{
 		Session: *response,
+	})
+}
+
+// session/ godoc
+// @Summary Get session by user id
+// @Description Gets game session for user_id
+// @Tags session
+// @Produce  json
+// @Param session_body body sessionGetByUserRequest true "body"
+// @Success 200 {object} sessionGetByUserResponse
+// @Failure 204 {object} sessionNoSessionErrorResponse
+// @Failure 500 {object} ErrResponse
+// @Router /session/getByUser [post]
+func (s *Server) sessionGetByUser(w http.ResponseWriter, r *http.Request) {
+	data := &sessionGetByUserRequest{}
+
+	if err := render.Bind(r, data); err != nil {
+		renderError(w, r, http.StatusBadRequest, ErrServerBadRequest, ErrServerUserIdInvalid)
+		return
+	}
+
+	player, err := s.sessionService.GetPlayer(data.UserId)
+	if err != nil {
+		renderError(w, r, http.StatusNotFound, ErrServerUserIdNotFound, err)
+		return
+	}
+
+	if player.SessionId == "" {
+		renderError(w, r, http.StatusNoContent, ErrServerUserNoSession, ErrServerUserNoSession)
+		return
+	}
+
+	render.Render(w, r, &sessionGetByUserResponse{
+		SessionId: player.SessionId,
 	})
 }
 
