@@ -318,7 +318,7 @@ func (s *Server) roomGet(w http.ResponseWriter, r *http.Request) {
 		renderError(w, r, http.StatusNotFound, ErrServerRoomIdNotFound, err)
 		return
 	}
-	response := NewRoomResponse(&room, &users[0], users)
+	response := NewRoomResponse(&room, users)
 
 	render.Render(w, r, &roomGetResponse{
 		Room: *response,

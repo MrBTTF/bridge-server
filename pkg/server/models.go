@@ -133,7 +133,6 @@ type sessionGetResponse struct {
 	DefaultResponse
 }
 
-
 type sessionGetByUserResponse struct {
 	SessionId string `json:"session_id" example:"string"`
 	DefaultResponse
@@ -195,11 +194,17 @@ type RoomResponse struct {
 	Open  bool                 `json:"open" example:"true"`
 }
 
-func NewRoomResponse(room *core.Room, host *core.User, users []core.User) *RoomResponse {
+func NewRoomResponse(room *core.Room, users []core.User) *RoomResponse {
 	users_response := make([]UserResponseSecure, 0, len(users))
+	var host *core.User
 	for _, user := range users {
 		users_response = append(users_response, *NewUserResponseSecure(&user))
+		if user.Id == room.Host {
+			u := user
+			host = &u
+		}
 	}
+
 	return &RoomResponse{
 		Id:    room.Id,
 		Host:  *NewUserResponseSecure(host),
@@ -231,7 +236,7 @@ type roomListResponse struct {
 func NewRoomListResponse(roomUsers []RoomUser) *roomListResponse {
 	rooms_response := make([]RoomResponse, 0, len(roomUsers))
 	for _, ru := range roomUsers {
-		rooms_response = append(rooms_response, *NewRoomResponse(&ru.room, &ru.users[0], ru.users))
+		rooms_response = append(rooms_response, *NewRoomResponse(&ru.room, ru.users))
 	}
 	return &roomListResponse{
 		Rooms: rooms_response,
