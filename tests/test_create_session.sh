@@ -96,11 +96,11 @@ if [[ "$success" == "false" ]]; then
 fi
 echo $response |  jq
 
-# response=$(curl --header "Content-Type: application/json" \
-#   --request POST \
-#   --data "{\"room_id\":\"$room_id\", \"user_id\":\"$user_id1\", \"token\":\"$token1\"}" \
-#   $API_URL/room/delete)
-# if [[ "$success" == "false" ]]; then
-#   exit 1
-# fi
-# echo $response |  jq
+response=$(curl --header "Content-Type: application/json" \
+  --request POST \
+  --data "{\"room_id\":\"$room_id\", \"user_id\":\"$user_id1\", \"token\":\"$token1\"}" \
+  $API_URL/room/delete)
+if [[ "$success" == "false" ]]; then
+  exit 1
+fi
+echo $response |  jq
