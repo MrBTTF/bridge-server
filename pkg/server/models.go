@@ -95,7 +95,7 @@ type roomDeleteRequest struct {
 type PlayerResponse struct {
 	Id        string   `json:"id" example:"string"`
 	Name      string   `json:"name" example:"string"`
-	Cards     []string `json:"players" example:"string"`
+	Cards     []string `json:"cards" example:"string"`
 	State     string   `json:"state" example:"string"`
 	SessionId string
 }
