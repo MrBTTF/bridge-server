@@ -38,6 +38,28 @@ func (rr *RoomRepository) Get(room_id string) (core.Room, error) {
 	return room, nil
 }
 
+const SelectRoomByUserId = `
+SELECT user_id
+FROM users
+JOIN rooms ON user_id = any(rooms.user_ids)
+WHERE users.user_id = $1
+`
+
+func (rr *RoomRepository) GetByUserId(user_id string) (string, error) {
+	var room_id string
+
+	err := rr.db.QueryRow(SelectRoomByUserId, user_id).Scan(
+		&room_id,
+	)
+	if err == sql.ErrNoRows {
+		return "", fmt.Errorf("Unable to get room for user id %s: %w", user_id, core.NoRoomForUserError)
+	} else if err != nil {
+		return "", fmt.Errorf("Unable to get room for user id %s: %w", user_id, err)
+	}
+
+	return room_id, nil
+}
+
 const SelectRooms = `
 SELECT room_id, host_id, user_ids, open
 FROM rooms

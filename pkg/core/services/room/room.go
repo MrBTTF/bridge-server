@@ -1,10 +1,15 @@
 package room
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/mrbttf/bridge-server/pkg/core"
+)
+
+var (
+	UserHasRoomError = errors.New("User has joined another room already")
 )
 
 type RoomService struct {
@@ -44,6 +49,13 @@ func (rs *RoomService) GetUsers(room_id string) ([]core.User, error) {
 }
 
 func (rs *RoomService) Join(room_id string, user_id string) error {
+	user_room_id, err := rs.rooms.GetByUserId(user_id)
+	if user_room_id != "" {
+		return fmt.Errorf("Unable to join room, room_id %s, user_id %s: %w", room_id, user_id, UserHasRoomError)
+	} else if !errors.Is(err, core.NoRoomForUserError) {
+		return fmt.Errorf("Unable to join room, room_id %s, user_id %s: %w", room_id, user_id, err)
+	}
+
 	room, err := rs.rooms.Get(room_id)
 	if err != nil {
 		return fmt.Errorf("Unable to join room, room_id %s, user_id %s: %w", room_id, user_id, err)

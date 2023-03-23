@@ -8,6 +8,7 @@ import (
 	"github.com/mrbttf/bridge-server/pkg/core"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/exp/maps"
+	"golang.org/x/exp/slices"
 )
 
 const (
@@ -120,6 +121,16 @@ func (m *MockRoomRepository) Get(room_id string) (core.Room, error) {
 		return core.Room{}, NotFoundError
 	}
 	return v, nil
+}
+
+func (m *MockRoomRepository) GetByUserId(user_id string) (string, error) {
+	for _, room := range m.rooms {
+		if slices.Index(room.Users, user_id) != -1 {
+			return room.Id, nil
+		}
+	}
+
+	return "", NotFoundError
 }
 
 func (m *MockRoomRepository) Store(room *core.Room) error {

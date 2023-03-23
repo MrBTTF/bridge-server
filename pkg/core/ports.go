@@ -1,8 +1,16 @@
 package core
 
-import "github.com/MrBTTF/gophercises/deck"
+import (
+	"errors"
+
+	"github.com/MrBTTF/gophercises/deck"
+)
 
 ////go:generate mockgen -source=ports.go  -destination=port_mocks.go -package=core
+
+var (
+	NoRoomForUserError = errors.New("User has no room")
+)
 
 type SessionRepository interface {
 	Get(string) (Session, error)
@@ -24,6 +32,7 @@ type UserRepository interface {
 
 type RoomRepository interface {
 	Get(string) (Room, error)
+	GetByUserId(string) (string, error)
 	List(bool) ([]Room, error)
 	Store(*Room) error
 	Delete(string) error
